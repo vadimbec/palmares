@@ -1013,7 +1013,7 @@ function recoScores(){
    Un « profil » est une photo de ton classement : {v, id, n (prénom), at, s: [[clé, note×10]…] dans l'ordre, a: animés, p: pas finies}.
    Clé = id du catalogue (nombre) ou titre (texte) pour une série hors catalogue. Le lien de partage contient ce profil compressé :
    aucun serveur, chacun garde son propre classement sur son appareil. */
-const SITE = "";
+const SITE = "https://vadimbec.github.io/palmares/";
 let BAKED = {}, amiSel = null, amiTab = 'disc';
 try { amiTab = localStorage.getItem('palmares:amitab') || 'disc'; amiSel = localStorage.getItem('palmares:amisel'); } catch(e) {}
 function friends(){ const off = new Set(S.amisOff || []), out = {};
