@@ -1,0 +1,1377 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F1F2F7" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0D0F1D" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Classe tes séries par duels et compare ton classement avec tes amis.">
+<link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon.png"><meta name="apple-mobile-web-app-title" content="Palmarès">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}</style>
+<title>Palmarès Séries</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one phone-width column, sticky header, fixed bottom tab bar; posters carry the page. */
+:root{
+  --bg:#F1F2F7; --surface:#FFFFFF; --sunk:#E6E8F1; --ink:#14172B; --muted:#5C6180; --line:#D8DBE7;
+  --accent:#3B3BD6; --accent-ink:#FFFFFF; --accent-soft:#E3E3FB;
+  --love:#C98A0C; --good:#1F8C7E; --meh:#7D8199; --drop:#B4505A; --up:#1F8C4E;
+  --display:"Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D0F1D; --surface:#171A2C; --sunk:#111325; --ink:#ECEDF6; --muted:#9A9EBA; --line:#2A2E48;
+  --accent:#908DFF; --accent-ink:#0D0F1D; --accent-soft:#25264A;
+  --love:#F0B93E; --good:#4CC3B3; --meh:#A0A4BF; --drop:#EE7480; --up:#5BD08F; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0D0F1D; --surface:#171A2C; --sunk:#111325; --ink:#ECEDF6; --muted:#9A9EBA; --line:#2A2E48;
+  --accent:#908DFF; --accent-ink:#0D0F1D; --accent-soft:#25264A;
+  --love:#F0B93E; --good:#4CC3B3; --meh:#A0A4BF; --drop:#EE7480; --up:#5BD08F; color-scheme:dark }
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:600px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
+.brand{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.02em;line-height:1}
+.brand small{display:block;font-family:var(--body);font-weight:500;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.stats{margin-left:auto;text-align:right;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.stats b{color:var(--ink);font-weight:600}
+.sync{display:inline-flex;align-items:center;gap:5px}
+.sync i{width:7px;height:7px;border-radius:50%;background:var(--meh);display:inline-block}
+.sync.ok i{background:var(--good)} .sync.err i{background:var(--drop)}
+main{padding-block:16px 110px}
+section[data-view]{display:flex;flex-direction:column;gap:16px}
+h2{font-family:var(--display);font-weight:700;font-size:24px;letter-spacing:-.02em;line-height:1.15;margin:0;text-wrap:balance}
+h3{font-family:var(--display);font-weight:700;font-size:17px;margin:0;letter-spacing:-.01em}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;font-weight:600;font-size:14px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.yes{border-color:var(--good);color:var(--good)} .btn.no{border-color:var(--drop);color:var(--drop)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.between{justify-content:space-between}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:500;z-index:40;max-width:calc(100% - 32px);text-align:center;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.kbd{font-size:12px;color:var(--muted)}
+
+/* Tabs */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-block:8px}
+nav.tabs button{border:0;background:transparent;border-radius:10px;padding:8px 4px;font-size:13px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-selected="true"]{color:var(--accent);background:var(--accent-soft)}
+nav.tabs .badge{font-size:10px;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:0 6px;margin-left:4px;font-variant-numeric:tabular-nums}
+
+/* Posters */
+.art{position:relative;overflow:hidden;aspect-ratio:7/10;max-width:100%;border-radius:10px;background-color:var(--sunk);background-repeat:no-repeat}
+.art.sheet.big{background-size:800% 200%}
+.art.sheet.sm{background-size:800% 800%}
+.art img{width:100%;height:100%;object-fit:cover;display:block}
+.art.gen{--h:240;padding:10px;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;color:#fff;box-sizing:border-box;
+  background:radial-gradient(120% 80% at 20% 10%,hsl(var(--h) 70% 52% / .55),transparent 60%),linear-gradient(165deg,hsl(var(--h) 52% 34%),hsl(calc(var(--h) + 48) 58% 13%))}
+.art.gen::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 1px,transparent 1px 3px);pointer-events:none}
+.art.gen .gt{font-family:var(--display);font-weight:800;font-size:20px;line-height:1.02;letter-spacing:-.02em;overflow-wrap:anywhere;position:relative}
+.art.gen .gt.long{font-size:15px}.art.gen .gt.xlong{font-size:12px}
+.art.gen .gy{font-size:11px;font-weight:600;opacity:.8;position:relative}
+.art.sm.gen{padding:4px}.art.sm.gen .gt{font-size:9px;line-height:1.05}.art.sm.gen .gy{display:none}
+.tag{position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(10,12,25,.72);color:#fff;padding:3px 7px;border-radius:999px;z-index:1}
+
+/* Duel */
+.duel{display:grid;grid-template-columns:1fr 1fr;gap:12px;position:relative}
+.duel>button{border:0;padding:0;background:none;text-align:left;display:flex;flex-direction:column;gap:8px;min-width:0;transition:transform .12s}
+.duel>button:active{transform:scale(.97)}
+.duel>button .art{outline:3px solid transparent;outline-offset:3px;transition:outline-color .15s;box-shadow:0 10px 28px -16px rgba(0,0,0,.6)}
+.duel>button:hover .art,.duel>button:focus-visible .art{outline-color:var(--accent)}
+.duel>button:focus-visible{outline:none}
+.duel .dt{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.duel .dm{font-size:12px;color:var(--muted)}
+.vs{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%);z-index:2;font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.06em;background:var(--ink);color:var(--bg);border-radius:999px;padding:6px 9px;pointer-events:none}
+.tierpick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tierpick button{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:14px 12px;text-align:left;display:flex;flex-direction:column;gap:2px}
+.tierpick button b{font-family:var(--display);font-size:18px;font-weight:700}
+.tierpick button span{font-size:12px;color:var(--muted)}
+.tierpick button[data-t="love"]{border-left:5px solid var(--love)}
+.tierpick button[data-t="good"]{border-left:5px solid var(--good)}
+.tierpick button[data-t="meh"]{border-left:5px solid var(--meh)}
+.tierpick button[data-t="drop"]{border-left:5px solid var(--drop)}
+.solo{display:grid;grid-template-columns:130px 1fr;gap:16px;align-items:end}
+.solo>div{min-width:0;display:flex;flex-direction:column;gap:6px}
+.solo .st{font-family:var(--display);font-weight:700;font-size:22px;line-height:1.1;overflow-wrap:anywhere}
+.dots{display:flex;gap:5px}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--sunk);border:1px solid var(--line)}
+.dots i.on{background:var(--accent);border-color:var(--accent)}
+.result{display:grid;grid-template-columns:56px 1fr;gap:12px;align-items:center;background:var(--accent-soft);border-radius:12px;padding:10px}
+.result>div{min-width:0}
+.result b{font-weight:600}
+.steps{display:grid;gap:12px;margin:0;padding:0;list-style:none;counter-reset:s}
+.steps li{display:grid;grid-template-columns:28px 1fr;gap:10px;counter-increment:s}
+.steps li::before{content:counter(s);font-family:var(--display);font-weight:800;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:14px}
+
+/* Add / discovery */
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;font-weight:600}
+input[type=text],input[type=search],textarea,select{width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:11px 12px;font:inherit;font-size:16px}
+textarea{min-height:110px;resize:vertical}
+.hits{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.hit{border:0;border-bottom:1px solid var(--line);background:var(--surface);padding:8px 10px;text-align:left;display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center}
+.hit:last-child{border-bottom:0}
+.hit>span{min-width:0}
+.hit .y{color:var(--muted);font-size:12px;display:block}
+.hit .tg{font-size:12px;color:var(--muted)}
+.hit.free{grid-template-columns:1fr;color:var(--accent);font-weight:600;padding:12px}
+.hit .art{border-radius:5px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.chips button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;white-space:nowrap}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:520px){.grid{grid-template-columns:repeat(4,1fr)}}
+.gcell{border:0;padding:0;background:none;position:relative;display:flex;flex-direction:column;gap:4px;text-align:left;min-width:0}
+.gcell .gw,.deck .gw{font-size:10.5px;line-height:1.2;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
+.deck .gw{font-size:12px;font-weight:400;margin-top:2px;white-space:normal}
+.gchips{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.gchips span{font-size:11.5px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted)}
+.gcell .gn{font-size:11px;line-height:1.2;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gcell .art{transition:transform .12s, opacity .12s}
+.gcell[aria-pressed="false"].dim .art{opacity:.55}
+.gcell .ck{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(10,12,25,.55);border:2px solid #fff;display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;z-index:2}
+.gcell[aria-pressed="true"] .ck{background:var(--good);border-color:var(--good)}
+.gcell[aria-pressed="true"] .art{outline:3px solid var(--good);outline-offset:-3px}
+.deck{position:relative;height:340px;display:grid;place-items:center;touch-action:pan-y;user-select:none}
+.deck .card{position:absolute;width:220px;max-width:66%;transition:transform .25s,opacity .25s}
+.deck .card.back{transform:scale(.93) translateY(10px);opacity:.5}
+.deck .card.front{cursor:grab;z-index:2}
+.deck .card .cn{text-align:center;font-weight:600;margin-top:6px;font-size:14px}
+.deck .stamp{position:absolute;top:18px;z-index:3;font-family:var(--display);font-weight:800;font-size:22px;padding:2px 10px;border:3px solid;border-radius:8px;opacity:0;background:var(--surface)}
+.deck .stamp.yes{right:8px;color:var(--good);transform:rotate(10deg)}
+.deck .stamp.no{left:8px;color:var(--drop);transform:rotate(-10deg)}
+.deckbtns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.deckbtns .btn{padding:12px 6px}
+.prompts{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--muted)}
+.prompts b{color:var(--ink);font-weight:600}
+.ai-item{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.ai-item>div{min-width:0;display:flex;flex-direction:column;gap:6px}
+.ai-item small{color:var(--muted);font-size:12px}
+details summary{cursor:pointer;font-weight:600;list-style:none;display:flex;align-items:center;gap:8px}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"+";margin-left:auto;font-family:var(--display);font-size:20px;color:var(--muted)}
+details[open] summary::after{content:"–"}
+
+/* Ranking */
+.podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;align-items:end}
+.podium button{border:0;background:none;padding:0;display:flex;flex-direction:column;gap:6px;text-align:center;min-width:0}
+.podium .pr{font-family:var(--display);font-weight:800;font-size:15px}
+.podium .pt{font-size:12px;font-weight:600;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.podium .p1 .art{box-shadow:0 0 0 3px var(--love)}
+.ranklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.ritem>button{width:100%;border:0;background:transparent;display:grid;grid-template-columns:34px 38px 1fr auto;gap:10px;align-items:center;padding:7px 2px;text-align:left;border-bottom:1px solid var(--line)}
+.rnum{font-family:var(--display);font-weight:800;font-size:18px;font-variant-numeric:tabular-nums;text-align:right;line-height:1}
+.rnum small{display:block;font-family:var(--body);font-size:10px;font-weight:600;margin-top:3px}
+.mv-up{color:var(--up)} .mv-dn{color:var(--drop)}
+.rt{min-width:0}
+.rt b{font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt span{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.tdot{width:8px;height:8px;border-radius:2px;display:inline-block}
+.score{font-variant-numeric:tabular-nums;font-weight:700;font-size:14px;padding:4px 8px;border-radius:8px;background:var(--sunk);min-width:30px;text-align:center}
+.conf{display:inline-flex;gap:2px}.conf i{width:4px;height:4px;border-radius:50%;background:var(--line)}.conf i.on{background:var(--muted)}
+.wall{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:520px){.wall{grid-template-columns:repeat(4,1fr)}}
+.wall button{border:0;padding:0;background:none;position:relative;min-width:0}
+.wall .wr{position:absolute;left:6px;bottom:6px;z-index:2;background:rgba(10,12,25,.75);color:#fff;font-family:var(--display);font-weight:800;font-size:13px;border-radius:7px;padding:2px 7px;font-variant-numeric:tabular-nums}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:22px 16px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+.droplist{display:flex;flex-wrap:wrap;gap:6px}
+.droplist button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 10px;font-size:13px}
+
+/* Detail sheet */
+.sheet-bg{position:fixed;inset:0;z-index:30;background:rgba(8,9,20,.55);display:flex;align-items:flex-end;justify-content:center}
+.sheet-p{background:var(--bg);width:100%;max-width:600px;max-height:88%;overflow-y:auto;border-radius:18px 18px 0 0;box-sizing:border-box;padding-block:18px calc(20px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+.dhead{display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:end}
+.dhead>div{min-width:0;display:flex;flex-direction:column;gap:4px}
+.big-note{font-family:var(--display);font-weight:800;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.tiersel{display:flex;gap:6px;flex-wrap:wrap}
+.tiersel button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
+.tiersel button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.hist li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.hist li>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res{font-size:11px;font-weight:700;letter-spacing:.05em;border-radius:6px;padding:2px 6px}
+.res.w{background:color-mix(in srgb,var(--up) 18%,transparent);color:var(--up)}
+.res.l{background:color-mix(in srgb,var(--drop) 18%,transparent);color:var(--drop)}
+.res.d,.res.h{background:var(--sunk);color:var(--muted)}
+.x{border:0;background:none;color:var(--muted);font-size:18px;padding:2px 8px;border-radius:6px}
+.explain{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--muted)}
+.explain b{color:var(--ink)}
+[hidden]{display:none!important}
+.lsw .cnt{margin-left:6px;font-weight:500;opacity:.7;font-variant-numeric:tabular-nums}
+.pill{font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted)}
+.solo .seg{align-self:flex-start}
+.mvrow{display:flex;flex-wrap:wrap;gap:6px}
+.mvchip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 10px;font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mvchip span{font-weight:700;font-variant-numeric:tabular-nums}
+.chart{position:relative}
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.chart text{font-size:10px;fill:var(--muted);font-family:var(--body)}
+.chart .base{stroke:var(--line);stroke-width:1}
+.chart .grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3}
+.chart .bar{fill:var(--accent)}
+.chart .line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart .pt{fill:var(--accent);stroke:var(--bg);stroke-width:2}
+.chart .hit{fill:transparent;cursor:default}
+.chart .hit.on{fill:color-mix(in srgb,var(--ink) 7%,transparent)}
+.chart .tip{position:absolute;top:-6px;transform:translateY(-100%);background:var(--ink);color:var(--bg);font-size:12px;padding:5px 9px;border-radius:8px;white-space:nowrap;pointer-events:none;z-index:3}
+.astats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.astats div{background:var(--sunk);border-radius:10px;padding:8px 4px;text-align:center;display:flex;flex-direction:column}
+.astats b{font-family:var(--display);font-size:20px;font-variant-numeric:tabular-nums}
+.astats span{font-size:11px;color:var(--muted)}
+.alist{list-style:none;margin:0;padding:0}
+.arow{display:grid;grid-template-columns:30px 38px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 2px;border-bottom:1px solid var(--line)}
+.arow .rnum{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted);text-align:right;font-size:13px}
+.arow.nr{grid-template-columns:38px minmax(0,1fr) auto}
+.arow .rt span{flex-wrap:wrap}
+.arow .rt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.abtn{display:flex;gap:6px}
+.abtn .btn{padding:6px 8px}
+.lnk{border:0;background:none;padding:0;color:var(--muted);text-decoration:underline;font-size:12px}
+nav.tabs button{font-size:12px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="top"><div class="wrap">
+  <div class="brand">Palmarès<small>Séries</small></div>
+  <div class="stats" id="stats"></div>
+</div></header>
+
+<main class="wrap">
+  <section data-view="duel" id="v-duel"></section>
+
+  <section data-view="add" id="v-add" hidden>
+    <div><p class="eyebrow">Inventaire</p><h2>Retrouve tout ce que tu as vu</h2></div>
+    <div id="amis-hint"></div>
+
+    <div class="panel">
+      <div class="field">
+        <label for="q">Chercher ou ajouter une série</label>
+        <input type="search" id="q" placeholder="Ex. The Wire, Kaamelott, Dr House…" autocomplete="off" enterkeyhint="done">
+      </div>
+      <div class="hits" id="hits" hidden></div>
+      <p class="kbd" id="catinfo">Catalogue en cours de chargement…</p>
+    </div>
+
+    <div class="panel">
+      <div class="row between"><h3>Fouiller ta mémoire</h3>
+        <div class="seg" role="group" aria-label="Affichage"><button id="m-grid" aria-pressed="true">Grille</button><button id="m-cards" aria-pressed="false">Cartes</button></div></div>
+      <p class="muted small" id="disc-help"></p>
+      <div class="chips" id="cats" role="toolbar" aria-label="Catégories"></div>
+      <div id="disc"></div>
+    </div>
+
+    <div class="panel" id="ai-panel" hidden>
+      <h3>Les oubliées probables</h3>
+      <p class="muted small">Claude regarde ta liste et propose des séries que tu as sûrement vues aussi, y compris hors catalogue. Rien de ce que tu as déjà rangé (vue, pas vue, pas finie) ni déjà proposé ne revient.</p>
+      <div class="row"><button class="btn primary" id="ai-go">Proposer 20 séries</button><span class="kbd" id="ai-status"></span></div>
+      <div class="hits" id="ai-list" style="border:0;gap:8px"></div>
+    </div>
+
+    <div class="panel">
+      <details>
+        <summary>Coller une liste</summary>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+          <p class="muted small">Une série par ligne : calendrier Subfactory, note du téléphone, historique Netflix… Les numéros et puces en début de ligne sont ignorés, une année entre parenthèses est gardée.</p>
+          <textarea id="bulk" placeholder="Breaking Bad&#10;Le Bureau des légendes (2015)&#10;- Severance"></textarea>
+          <div class="row"><button class="btn primary" id="bulk-go">Ajouter ces séries</button></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="panel">
+      <h3>Pistes pour se souvenir</h3>
+      <ul class="prompts small">
+        <li><b>Historique Netflix</b> : Compte › Profil › Activité de visionnage. Tout y est depuis le premier jour.</li>
+        <li><b>Les listes</b> « Ma liste » / « Reprendre » de Prime, Disney+, Canal+, Crunchyroll, Max…</li>
+        <li>Ce que tu regardais au collège, au lycée, puis pendant les études.</li>
+        <li>Les séries du confinement, de l'été, d'un hiver malade.</li>
+        <li>Les mini-séries avalées en un week-end.</li>
+        <li>Celles regardées en couple, en coloc, en famille.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section data-view="rank" id="v-rank" hidden></section>
+  <section data-view="amis" id="v-amis" hidden></section>
+</main>
+
+<nav class="tabs" aria-label="Sections"><div class="wrap" role="tablist">
+  <button role="tab" data-tab="add" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Ajouter</button>
+  <button role="tab" data-tab="duel" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/></svg><span>Duels<span class="badge" id="qbadge" hidden></span></span></button>
+  <button role="tab" data-tab="rank" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Classement</button>
+  <button role="tab" data-tab="amis" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 14.8c1.6.8 2.7 2.5 3 5.2"/></svg>Amis</button>
+</div></nav>
+<div class="sheet-bg" id="sheet" hidden><div class="sheet-p" id="sheet-p" role="dialog" aria-modal="true"></div></div>
+<input type="file" id="file" accept="image/*" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ================= Modèle ================= */
+const TIERS = ['love','good','meh'];
+const TINFO = {love:{n:'Adorée',pl:'Adorées',mu:1.2,c:'var(--love)'}, good:{n:'Bien',pl:'Bien',mu:0,c:'var(--good)'}, meh:{n:'Bof',pl:'Bof',mu:-1.2,c:'var(--meh)'}, auto:{n:'Sans palier',pl:'Sans palier',mu:0,c:'var(--accent)'}};
+/* Deux classements séparés : séries et animés. Une série n'est jamais comparée à un animé. */
+const LISTS = {s:{n:'Séries', one:'série', pl:'séries'}, a:{n:'Animés', one:'animé', pl:'animés'}};
+const SIG2 = 4;                 // variance a priori : le palier n'est qu'un point de départ
+const noteOf = id => FIT.nt[id] ?? 5;
+const fmtNote = x => x.toFixed(1).replace('.', ',');
+
+const fresh = () => ({v:2, items:{}, order:[], queue:[], dropped:[], skipped:[], pending:null, updatedAt:0});
+let S = fresh(), D = [];         // S : séries et file ; D : tous les duels {a,b,r,t} (a gagne, sauf r='d' égalité)
+const emptyFit = () => ({orders:{s:[], a:[]}, s:{}, c:{}, rank:{}, nt:{}, lo:{}, hi:{}, G:{}});
+let FIT = emptyFit();
+const listOf = id => S.items[id] && S.items[id].an ? 'a' : 's';
+const ordOf = L => FIT.orders[L];
+let curList = 's'; try { if (localStorage.getItem('palmares:list') === 'a') curList = 'a'; } catch(e) {}
+
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim();
+const enc = d => `${d.a},${d.b},${d.r},${Math.round((d.t||0)/1000).toString(36)}`;
+const dec = s => { const [a,b,r,t] = s.split(','); return {a, b, r, t: parseInt(t || '0', 36) * 1000}; };
+const newId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+
+function fromV1(o){
+  const s = fresh(), d = [];
+  for (const [id, it] of Object.entries(o.items || {})) s.items[id] = {id, t: it.t, y: it.y || null, at: it.at || 0};
+  const chain = [];
+  for (const t of TIERS) for (const id of ((o.tiers || {})[t] || [])) if (s.items[id] && !s.items[id].tier) { s.items[id].tier = t; chain.push(id); }
+  for (let i = 0; i < chain.length - 1; i++) d.push({a: chain[i], b: chain[i+1], r: 'h', t: 0});
+  s.order = chain.slice();
+  s.queue = (o.queue || []).filter(id => s.items[id] && !s.items[id].tier);
+  s.dropped = (o.dropped || []).filter(id => s.items[id] && !s.items[id].tier && !s.queue.includes(id));
+  for (const id in s.items) if (!s.items[id].tier && !s.queue.includes(id) && !s.dropped.includes(id)) s.queue.push(id);
+  s.skipped = (o.skipped || []).slice(); s.updatedAt = o.updatedAt || 0; s.fromV1 = {duels: o.duels || 0, at: Date.now()};
+  return {s, d};
+}
+function clean(s, d){
+  s = Object.assign(fresh(), s || {}); s.items = s.items || {};
+  for (const id in s.items) { const it = s.items[id]; if (it.tier && !TINFO[it.tier]) delete it.tier; }
+  s.queue = (s.queue || []).filter(id => s.items[id]); s.dropped = (s.dropped || []).filter(id => s.items[id]);
+  for (const id of [...s.queue, ...s.dropped]) delete s.items[id].tier;
+  for (const id in s.items) if (!s.items[id].tier && !s.queue.includes(id) && !s.dropped.includes(id)) s.queue.push(id);
+  s.skipped = s.skipped || [];
+  if (s.pending && (!s.items[s.pending.id] || s.items[s.pending.id].tier)) s.pending = null;
+  const seen = new Set(); s.order = (s.order || []).filter(id => s.items[id] && s.items[id].tier && !seen.has(id) && seen.add(id));
+  for (const t of [...TIERS, 'auto']) for (const id in s.items) if (s.items[id].tier === t && !seen.has(id)) { seen.add(id); s.order.push(id); }
+  return {s, d: (d || []).filter(x => x && s.items[x.a] && s.items[x.b] && x.a !== x.b)};
+}
+
+/* L'ORDRE : une liste explicite par classement, qui respecte tes duels. Pour chaque paire, seul le duel le plus récent compte.
+   Quand des duels se contredisent, on déplace la série vers la place qui en contredit le moins (en poids).
+   S.order mélange les deux classements ; chaque classement n'utilise que ses propres cases. */
+const REPW = {w: 1, m: 2, h: .5};
+const pairKey = (a, b) => a < b ? a + '|' + b : b + '|' + a;
+function lastByPair(){ const last = new Map(); for (const d of D) last.set(pairKey(d.a, d.b), d); return last; }
+function constraints(L){
+  const C = [];
+  for (const d of lastByPair().values()) if (d.r !== 'd' && S.items[d.a]?.tier && S.items[d.b]?.tier && listOf(d.a) === L && listOf(d.b) === L) C.push([d.a, d.b, REPW[d.r] || 1]);
+  return C;
+}
+function repair(){ for (const L of ['s', 'a']) repairList(L); }
+function repairList(L){
+  const slots = []; let ord = [];
+  S.order.forEach((id, i) => { if (S.items[id]?.tier && listOf(id) === L) { slots.push(i); ord.push(id); } });
+  const C = constraints(L); const by = new Map();
+  for (const c of C) for (const x of [c[0], c[1]]) { if (!by.has(x)) by.set(x, []); by.get(x).push(c); }
+  for (let pass = 0; pass < 8; pass++) {
+    const pos = new Map(ord.map((id, i) => [id, i])); const bad = [];
+    for (const [a, b] of C) if (pos.get(a) > pos.get(b)) bad.push(a, b);
+    if (!bad.length) break;
+    let moved = false;
+    for (const x of [...new Set(bad)]) {
+      const cur = ord.indexOf(x); const rest = ord.filter(id => id !== x); const rp = new Map(rest.map((id, i) => [id, i]));
+      const add = new Float64Array(rest.length + 2); let base = 0;
+      for (const [a, b, w] of by.get(x) || []) {
+        if (a === x) { const r = rp.get(b); if (r != null) add[r + 1] += w; }      // x doit rester au-dessus de b
+        else { const r = rp.get(a); if (r != null) { base += w; add[r + 1] -= w; } } // x doit rester sous a
+      }
+      let run = base, best = cur, bc = Infinity, cc = 0;
+      for (let k = 0; k <= rest.length; k++) { run += add[k]; if (k === cur) cc = run;
+        if (run < bc - 1e-9 || (Math.abs(run - bc) < 1e-9 && Math.abs(k - cur) < Math.abs(best - cur))) { bc = run; best = k; } }
+      if (bc < cc - 1e-9) { rest.splice(best, 0, x); ord = rest; moved = true; }
+    }
+    if (!moved) break;
+  }
+  slots.forEach((p, k) => S.order[p] = ord[k]);
+}
+
+function refit(){
+  S.order = S.order.filter(id => S.items[id] && S.items[id].tier);
+  const F = emptyFit(), last = lastByPair();
+  for (const L of ['s', 'a']) fitList(L, S.order.filter(id => listOf(id) === L), F, last);
+  FIT = F;
+}
+/* LA NOTE : une force par série, lissée le long de l'ordre (Bradley-Terry sur la chaîne des voisines + palier comme a priori).
+   Les égalités rapprochent les deux séries. Puis la force est forcée à décroître avec le rang.
+   LA PLACE POSSIBLE : ce que tes duels prouvent vraiment, directement ou par transitivité (A > B et B > C donc A > C). */
+function fitList(L, ids, F, last){
+  const n = ids.length; F.orders[L] = ids; const ix = new Map(ids.map((id, i) => [id, i]));
+  const mu = ids.map(id => TINFO[S.items[id].tier].mu);
+  const s = ids.map((id, i) => FIT.s[id] ?? mu[i]);
+  const EI = [], EJ = [], EY = [], EW = [];
+  for (let i = 0; i < n - 1; i++) { EI.push(i); EJ.push(i + 1); EY.push(1); EW.push(1.5); }
+  for (const d of last.values()) if (d.r === 'd' && ix.has(d.a) && ix.has(d.b)) { EI.push(ix.get(d.a)); EJ.push(ix.get(d.b)); EY.push(.5); EW.push(2); }
+  const m = EI.length, h = new Float64Array(n), g = new Float64Array(n), q = new Float64Array(m);
+  // Newton complet : H·δ = g résolu par gradient conjugué (H = a priori + laplacien pondéré, symétrique définie positive)
+  const Hmul = (x, out) => { for (let i = 0; i < n; i++) out[i] = h[i] * x[i]; for (let e = 0; e < m; e++) { const i = EI[e], j = EJ[e]; out[i] -= q[e] * x[j]; out[j] -= q[e] * x[i]; } };
+  const dlt = new Float64Array(n), r = new Float64Array(n), pv = new Float64Array(n), Ap = new Float64Array(n);
+  for (let it = 0; it < 40 && n; it++) {
+    for (let i = 0; i < n; i++) { g[i] = -(s[i] - mu[i]) / SIG2; h[i] = 1 / SIG2; }
+    for (let e = 0; e < m; e++) { const i = EI[e], j = EJ[e]; const p = 1 / (1 + Math.exp(s[j] - s[i])); const w = EW[e];
+      g[i] += w * (EY[e] - p); g[j] -= w * (EY[e] - p); q[e] = w * p * (1 - p); h[i] += q[e]; h[j] += q[e]; }
+    dlt.fill(0); r.set(g); pv.set(g); let rr = 0; for (let i = 0; i < n; i++) rr += r[i] * r[i];
+    if (rr < 1e-18) break;
+    for (let k = 0; k < 400 && rr > 1e-16; k++) { Hmul(pv, Ap); let pAp = 0; for (let i = 0; i < n; i++) pAp += pv[i] * Ap[i];
+      const al = rr / pAp; let rn = 0; for (let i = 0; i < n; i++) { dlt[i] += al * pv[i]; r[i] -= al * Ap[i]; rn += r[i] * r[i]; }
+      const be = rn / rr; rr = rn; for (let i = 0; i < n; i++) pv[i] = r[i] + be * pv[i]; }
+    let mx = 0; for (let i = 0; i < n; i++) mx = Math.max(mx, Math.abs(dlt[i]));
+    const sc = mx > 3 ? 3 / mx : 1; for (let i = 0; i < n; i++) s[i] += sc * dlt[i];
+    if (mx < 1e-7) break; }
+  // décroissance forcée le long du rang (pool adjacent violators)
+  const blocks = []; for (let i = 0; i < n; i++) { blocks.push({v: s[i], w: 1, n: 1});
+    while (blocks.length > 1 && blocks[blocks.length - 2].v < blocks[blocks.length - 1].v) { const b = blocks.pop(), a = blocks[blocks.length - 1]; a.v = (a.v * a.w + b.v * b.w) / (a.w + b.w); a.w += b.w; a.n += b.n; } }
+  let k = 0; for (const b of blocks) for (let t = 0; t < b.n; t++) s[k++] = b.v - t * 1e-3;
+  const lo = n ? Math.min(...s) : 0, hi = n ? Math.max(...s) : 0;
+  ids.forEach((id, i) => { F.s[id] = s[i]; F.c[id] = 0; F.rank[id] = i;
+    // note = moitié force lissée (écarts entre paliers, égalités), moitié rang (pas de plateau)
+    F.nt[id] = n >= 4 && hi > lo ? 1 + 9 * (.5 * (s[i] - lo) / (hi - lo) + .5 * (1 - i / (n - 1))) : 10 / (1 + Math.exp(-(s[i] * .8 + .5))); });
+  // place possible : ancêtres et descendants dans le graphe des duels réels (pas les « hérités » de la v1)
+  const W = (n + 31) >>> 5, up = new Uint32Array(n * W), dn = new Uint32Array(n * W);
+  const par = Array.from({length: n}, () => []), ch = Array.from({length: n}, () => []);
+  for (const d of last.values()) {
+    if (!ix.has(d.a) || !ix.has(d.b)) continue;
+    if (d.r === 'w' || d.r === 'd' || d.r === 'm') { F.c[d.a]++; F.c[d.b]++; }
+    if (d.r !== 'w' && d.r !== 'm') continue;
+    const i = ix.get(d.a), j = ix.get(d.b); if (i < j) { par[j].push(i); ch[i].push(j); }   // duels contredits par l'ordre : ignorés ici
+  }
+  for (let j = 0; j < n; j++) for (const i of par[j]) { up[j * W + (i >>> 5)] |= 1 << (i & 31); for (let w = 0; w < W; w++) up[j * W + w] |= up[i * W + w]; }
+  for (let i = n - 1; i >= 0; i--) for (const j of ch[i]) { dn[i * W + (j >>> 5)] |= 1 << (j & 31); for (let w = 0; w < W; w++) dn[i * W + w] |= dn[j * W + w]; }
+  const pc = x => { x -= (x >>> 1) & 0x55555555; x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return (((x + (x >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; };
+  ids.forEach((id, i) => { let a = 0, b = 0; for (let w = 0; w < W; w++) { a += pc(up[i * W + w]); b += pc(dn[i * W + w]); } F.lo[id] = a; F.hi[id] = n - 1 - b; });
+  F.G[L] = {W, dn};
+}
+const widthOf = id => (FIT.hi[id] ?? 0) - (FIT.lo[id] ?? 0);
+/* i au-dessus de j prouvé par les duels (directement ou par transitivité) */
+function proven(L, i, j){ const G = FIT.G[L]; if (i > j) [i, j] = [j, i]; return (G.dn[i * G.W + (j >>> 5)] >>> (j & 31)) & 1; }
+
+/* ================= Persistance ================= */
+const LS1 = 'palmares-series-v1', LS2 = 'palmares-series-v2';
+let localSource = 'none';
+function localLoad(){
+  try { const r = localStorage.getItem(LS2); if (r) { const o = JSON.parse(r); localSource = 'v2'; return clean(o.s, (o.d || []).map(dec)); } } catch(e) {}
+  try { const r = localStorage.getItem(LS1); if (r) { localSource = 'v1'; const m = fromV1(JSON.parse(r)); return clean(m.s, m.d); } } catch(e) {}
+  return null;
+}
+function localSave(){ try { localStorage.setItem(LS2, JSON.stringify({s: S, d: D.map(enc)})); } catch(e) {} }
+let mainRef = null, duelCol = null, histCol = null, v1Ref = null, saveT = null, saving = false, again = false, syncState = 'local', allDirty = false, mainDirty = false;
+const dirty = new Set(); const CH = 1500;
+const markDuel = i => dirty.add(Math.floor(i / CH));
+function save(){ S.updatedAt = Date.now(); mainDirty = true; snapTake(); localSave(); schedule(); }
+function schedule(ms = 700){ if (!mainRef) return; clearTimeout(saveT); saveT = setTimeout(flush, ms); }
+async function flush(){
+  if (!mainRef) return; if (saving) { again = true; return; } saving = true;
+  const n = Math.ceil(D.length / CH);
+  const list = allDirty ? [...Array(Math.max(n, S.nChunks || 0)).keys()] : [...dirty];
+  const doMain = mainDirty || allDirty || list.length > 0, days = [...histDirty];
+  allDirty = false; mainDirty = false; dirty.clear(); histDirty.clear();
+  try {
+    for (const c of list) await duelCol.doc('c' + c).set({list: D.slice(c * CH, (c + 1) * CH).map(enc)});
+    if (doMain) { S.nChunks = n; S.nDuels = D.length; await mainRef.set(JSON.parse(JSON.stringify(S))); }
+    for (const day of days) { const e = HIST.find(h => h.day === day); if (e) await histCol.doc('d' + day).set({day: e.day, t: e.t, s: e.s, a: e.a}); }
+    setSync('ok');
+  } catch(e) { allDirty = true; mainDirty = true; days.forEach(d => histDirty.add(d)); setSync(e && e.code === 'quota_exceeded' ? 'full' : 'err'); }
+  saving = false; if (again) { again = false; flush(); }
+}
+function setSync(s){ syncState = s; renderStats(); }
+async function readChunks(n){ const parts = await Promise.all([...Array(n).keys()].map(c => duelCol.doc('c' + c).get()));
+  return parts.flatMap(p => p.exists ? (p.data().list || []).map(dec) : []); }
+function applyState(s, d){ const c = clean(s, d); S = c.s; D = c.d; undo = []; refine = null; matchItems(); refit(); localSave(); render(); }
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({code: 'timeout'}), ms))]);
+
+async function connect(){
+  const use = window.claude && window.claude.use; if (!use) return;
+  const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]);
+  initSample(); initAssets();
+  if (!db || !user) return;
+  const uid = await user.id(); if (!uid) return;
+  const base = 'data/users/' + uid;
+  mainRef = db.doc(base + '/palmares2'); duelCol = mainRef.collection('duels'); histCol = mainRef.collection('hist'); v1Ref = db.doc(base + '/palmares');
+  setSync('wait');
+  try {
+    const r2 = await withTimeout(mainRef.get(), 12000);
+    if (r2.exists) {
+      const r = r2.data();
+      if (localSource !== 'v2' || (r.updatedAt || 0) > S.updatedAt) applyState(r, await readChunks(r.nChunks || 0));
+      else if ((r.updatedAt || 0) < S.updatedAt) { allDirty = true; schedule(100); }
+    } else {
+      const r1 = await withTimeout(v1Ref.get(), 12000);
+      if (r1.exists && (localSource !== 'v2' || !Object.keys(S.items).length)) {
+        const o = r1.data(); const loc1 = (() => { try { return JSON.parse(localStorage.getItem(LS1)); } catch(e) { return null; } })();
+        const src = loc1 && (loc1.updatedAt || 0) > (o.updatedAt || 0) ? loc1 : o;
+        const m = fromV1(src); applyState(m.s, m.d); toast('Ton classement v1 a été importé, l\'ancien reste sauvegardé');
+      }
+      if (Object.keys(S.items).length) { allDirty = true; schedule(100); }
+    }
+    localSource = 'v2'; setSync('ok');
+    loadHist();
+  } catch(e) { setSync(e && e.code === 'timeout' ? 'slow' : 'err'); }
+  mainRef.onSnapshot(async snap => {
+    if (!snap.exists || snap.metadata.hasPendingWrites || snap.metadata.fromCache) return;
+    const r = snap.data();
+    if ((r.updatedAt || 0) > S.updatedAt && !saving) { try { applyState(r, await readChunks(r.nChunks || 0)); } catch(e) {} }
+  }, () => setSync('err'));
+}
+
+/* ================= Historique : une photo du classement par jour ================= */
+const LSH = 'palmares-hist-v1';
+let HIST = []; const histDirty = new Set(); const HM = new WeakMap();
+try { HIST = JSON.parse(localStorage.getItem(LSH) || '[]').filter(e => e && e.day); } catch(e) {}
+const dayKey = (t = Date.now()) => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const fmtDay = k => new Date(k + 'T12:00:00').toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'});
+const snapEncode = L => FIT.orders[L].map(id => id + ',' + Math.round(noteOf(id) * 10)).join(';');
+/* une photo décodée : id -> [rang, note] (le rang est la position dans la chaîne) */
+function hdec(e, L){ let m = HM.get(e); if (!m) HM.set(e, m = {}); if (m[L]) return m[L];
+  const r = {}; if (e[L]) e[L].split(';').forEach((x, i) => { const [id, nt] = x.split(','); r[id] = [i, +nt / 10]; }); return m[L] = r; }
+function histLocalSave(){ try { localStorage.setItem(LSH, JSON.stringify(HIST.slice(-200))); } catch(e) {} }
+function snapTake(){
+  if (!FIT.orders.s.length && !FIT.orders.a.length) return;
+  const day = dayKey(), e = {day, t: Date.now(), s: snapEncode('s'), a: snapEncode('a')};
+  const i = HIST.findIndex(h => h.day === day);
+  if (i >= 0) { if (HIST[i].s === e.s && HIST[i].a === e.a) return; HIST[i] = e; } else { HIST.push(e); HIST.sort((x, y) => x.day < y.day ? -1 : 1); }
+  histDirty.add(day); histLocalSave();
+}
+async function loadHist(){
+  try {
+    const qs = await withTimeout(histCol.limit(1000).get(), 15000); const remote = new Set();
+    for (const doc of qs.docs) { const e = doc.data(); if (!e || !e.day) continue; remote.add(e.day);
+      const i = HIST.findIndex(h => h.day === e.day), c = {day: e.day, t: e.t || 0, s: e.s || '', a: e.a || ''};
+      if (i < 0) HIST.push(c); else if (c.t > (HIST[i].t || 0)) HIST[i] = c; else if (c.t < (HIST[i].t || 0)) histDirty.add(e.day); }
+    for (const e of HIST) if (!remote.has(e.day)) histDirty.add(e.day);
+    HIST.sort((x, y) => x.day < y.day ? -1 : 1); histLocalSave();
+  } catch(e) {}
+  snapTake(); if (histDirty.size) schedule(300); render();
+}
+
+/* ================= Catalogue & affiches ================= */
+let CAT = [], CAT_TM = new Map(), CAT_KEYS = new Map(), catReady = false, catDone = false;
+const CATS = [['reco','Pour toi'],['pop','Populaires'],['f','Françaises'],['u','Britanniques'],['j','Animés'],['a','Animation'],['k','Corée & Asie'],['e','Europe & monde'],['n','Netflix'],['h','HBO / Max'],['p','Apple TV+'],['m','Prime Video'],['d','Disney+'],['o','Documentaires'],['y90','Avant 2000'],['y00','2000-2009'],['y10','2010-2019'],['y20','2020 et après']];
+function inCat(c, k){ if (k === 'pop' || k === 'reco') return true; if (k[0] === 'y') { const y = c.y || 0; return k === 'y90' ? y && y < 2000 : k === 'y00' ? y >= 2000 && y < 2010 : k === 'y10' ? y >= 2010 && y < 2020 : y >= 2020; } return c.f.includes(k); }
+fetch('catalog.json').then(r => r.json()).then(j => {
+  CAT = j.items.map((a, i) => ({i, tm: a[0], n: a[1], y: a[2] || null, f: a[3] || '', net: a[4] || '', al: a[5] ? a[5].split('|') : [], g: a[6] || '', e: a[7] || null}));
+  for (const c of CAT) { CAT_TM.set(c.tm, c); c.k = norm(c.n); for (const k of new Set([c.k, ...c.al.map(norm)])) { if (!CAT_KEYS.has(k)) CAT_KEYS.set(k, []); CAT_KEYS.get(k).push(c.i); } c.keys = [...new Set([c.k, ...c.al.map(norm)])].join(' | '); }
+  catReady = catDone = true; matchItems(); refit(); render();
+  $('#catinfo').textContent = `${CAT.length} séries au catalogue, avec affiches. Absente ? Tape son titre et valide, elle est ajoutée telle quelle.`;
+}).catch(() => { catDone = true; render(); $('#catinfo').textContent = 'Le catalogue n\'a pas pu être chargé. Tu peux quand même ajouter des séries à la main.'; });
+function findCat(title, year){
+  const list = CAT_KEYS.get(norm(title)); if (!list) return null;
+  let best = null, bs = -1e9;
+  for (const i of list) { const c = CAT[i]; let sc = -i / 2000; if (year && c.y) sc -= Math.min(5, Math.abs(c.y - year)); if (c.k === norm(title)) sc += .5; if (sc > bs) { bs = sc; best = c; } }
+  return best;
+}
+function matchItems(){ if (!catReady) return;
+  for (const it of Object.values(S.items)) { if (!it.tm && !it.pa && !it.nmx) { const c = findCat(it.t, it.y); if (c) { it.tm = c.tm; delete it.nm; if (!it.y && c.y) it.y = c.y; } } if (it.an === undefined) it.an = !!(catOf(it) && catOf(it).f.includes('j')); }
+  S.skipped = [...new Set(S.skipped.map(k => { if (k[0] === '#') return k; const l = CAT_KEYS.get(k); return l ? '#' + CAT[l[0]].tm : k; }))];
+}
+const catOf = o => o && o.tm != null ? CAT_TM.get(o.tm) : null;
+const metaOf = it => { const c = catOf(it); return [it.y || (c && c.y), c && c.net].filter(Boolean).join(' · '); };
+function hue(t){ let h = 7; for (const ch of String(t)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h % 360; }
+function art(o, size = 'big', tag = ''){
+  const tg = tag ? `<span class="tag">${esc(tag)}</span>` : '';
+  if (o.pa) return `<div class="art ${size}">${tg}<img src="/_blob/${esc(o.pa)}" alt="" loading="lazy"></div>`;
+  const c = o.i != null && o.n ? o : catOf(o);
+  if (c && !o.nm) {
+    if (size === 'sm') { const sh = Math.floor(c.i / 64), sl = c.i % 64;
+      return `<div class="art sm sheet" style="background-image:url(q/s${sh}.jpg);background-position:${(sl % 8) / 7 * 100}% ${Math.floor(sl / 8) / 7 * 100}%">${tg}</div>`; }
+    const sh = Math.floor(c.i / 16), sl = c.i % 16;
+    return `<div class="art big sheet" style="background-image:url(q/b${sh}.jpg);background-position:${(sl % 8) / 7 * 100}% ${Math.floor(sl / 8) * 100}%">${tg}</div>`;
+  }
+  const t = o.t || o.n || '', len = t.length;
+  return `<div class="art ${size} gen" style="--h:${hue(t)}">${tg}${o.y ? `<span class="gy">${o.y}</span>` : ''}<span class="gt ${len > 34 ? 'xlong' : len > 18 ? 'long' : ''}">${esc(t)}</span></div>`;
+}
+
+/* ================= Helpers ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastT; function toast(m){ const el = $('#toast'); el.textContent = m; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2600); }
+const fr = n => n === 1 ? '1re' : n + 'e';
+let undo = [];
+function pushUndo(){ undo.push(JSON.stringify({s: S, d: D.map(enc)})); if (undo.length > 30) undo.shift(); }
+function popUndo(){ const u = undo.pop(); if (!u) return; const o = JSON.parse(u); const c = clean(o.s, o.d.map(dec)); S = c.s; D = c.d; refine = null; lastPlaced = null; allDirty = true; refit(); save(); render(); toast('Action annulée'); }
+function parseTitle(s){ s = s.replace(/^\s*(\d+[\.\)\-:]|[-*•·–])\s*/, '').trim(); const m = s.match(/^(.*?)\s*\((\d{4})\)\s*$/); return m ? {t: m[1].trim(), y: +m[2]} : {t: s, y: null}; }
+function hasItem(t, tm){ const k = norm(t); return Object.values(S.items).find(it => (tm != null && it.tm === tm) || norm(it.t) === k); }
+function addItem(t, y, opts = {}){
+  t = String(t).trim(); if (!t) return null;
+  const c = opts.cat || findCat(t, y);
+  if (hasItem(c ? c.n : t, c ? c.tm : null) || (c && hasItem(t))) return null;
+  const id = newId(); const it = {id, t: c ? c.n : t, y: y || (c && c.y) || null, at: Date.now()}; if (c) it.tm = c.tm; it.an = !!(c && c.f.includes('j'));
+  S.items[id] = it; const drop = new Set([norm(t), c ? '#' + c.tm : '']); S.skipped = S.skipped.filter(k => !drop.has(k));
+  (opts.dropped ? S.dropped : S.queue).push(id); return id;
+}
+function removeItem(id){ S.queue = S.queue.filter(x => x !== id); S.dropped = S.dropped.filter(x => x !== id);
+  if (S.pending && S.pending.id === id) S.pending = null; D = D.filter(d => d.a !== id && d.b !== id); allDirty = true; delete S.items[id]; }
+function record(a, b, r){ D.push({a, b, r, t: Date.now()}); markDuel(D.length - 1); }
+
+/* ================= Navigation ================= */
+let view = 'duel', snapRanks = {};
+try { view = localStorage.getItem('palmares:view') || 'duel'; snapRanks = JSON.parse(localStorage.getItem('palmares:snap2') || '{}'); } catch(e) {}
+function go(v){
+  if (view === 'rank' && v !== 'rank') { snapRanks = Object.assign({}, FIT.rank); try { localStorage.setItem('palmares:snap2', JSON.stringify(snapRanks)); } catch(e) {} }
+  view = v; try { localStorage.setItem('palmares:view', v); } catch(e) {} render(); scrollTo(0, 0);
+}
+document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab));
+function render(){ renderStats(); document.querySelectorAll('[data-view]').forEach(s => s.hidden = s.dataset.view !== view);
+  document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === view));
+  if (view === 'duel') renderDuel(); if (view === 'add') { amisHint(); renderHits(); renderDisc(); } if (view === 'amis') renderAmis(); if (view === 'rank') renderRank(); if (sheetId) renderSheet(); }
+function renderStats(){
+  const ns = FIT.orders.s.length, na = FIT.orders.a.length, q = S.queue.length;
+  const sy = {ok:['ok','Synchronisé'], wait:['','Connexion…'], slow:['err','Synchro lente'], err:['err','Hors ligne'], full:['err','Stockage plein'], local:['','Sur cet appareil']}[syncState];
+  $('#stats').innerHTML = `<div><b>${ns}</b> série${ns>1?'s':''} · <b>${na}</b> animé${na>1?'s':''} · <b>${q}</b> en attente</div><div class="sync ${sy[0]}"><i></i>${sy[1]}</div>`;
+  const b = $('#qbadge'); b.hidden = !q; b.textContent = q;
+}
+
+/* ================= Placement d'une nouvelle série ================= */
+let lastPlaced = null, refine = null, paused = false;
+function ensurePending(){
+  let p = S.pending;
+  if (p && (!S.items[p.id] || S.items[p.id].tier)) p = S.pending = null;
+  if (p && p.ord && (p.L !== listOf(p.id) || p.ord.some(id => !S.items[id] || !S.items[id].tier || listOf(id) !== p.L))) { p.tier = null; delete p.ord; }
+  if (!p && S.queue.length) p = S.pending = {id: S.queue[0], tier: null};
+  return p;
+}
+function nextOpp(p){
+  if (p.lo < p.hi) return {idx: (p.lo + p.hi) >> 1, kind: 'bs'};
+  if (p.lo === p.rLo && p.rLo > 0 && !p.up) return {idx: p.rLo - 1, kind: 'up'};
+  if (p.lo === p.rHi && p.rHi < p.ord.length && !p.dn) return {idx: p.rHi, kind: 'dn'};
+  return null;
+}
+function pickTier(t){
+  const p = ensurePending(); if (!p) return; pushUndo();
+  if (t === 'drop') { S.queue = S.queue.filter(x => x !== p.id); S.dropped.push(p.id); toast(`« ${S.items[p.id].t} » mise de côté`); S.pending = null; save(); render(); return; }
+  const L = listOf(p.id), ord = ordOf(L).slice(); const ix = ord.map((id, i) => S.items[id].tier === t ? i : -1).filter(i => i >= 0);
+  let rLo, rHi;
+  if (t === 'auto') { rLo = 0; rHi = ord.length; }
+  else if (ix.length) { rLo = ix[0]; rHi = ix[ix.length - 1] + 1; } else { rLo = 0; while (rLo < ord.length && FIT.s[ord[rLo]] > TINFO[t].mu) rLo++; rHi = rLo; }
+  Object.assign(p, {tier: t, L, ord, rLo, rHi, lo: rLo, hi: rHi, up: false, dn: false, n: 0, flip: Math.random() < .5});
+  advance();
+}
+function answer(res){ // res : 'w' la nouvelle gagne, 'l' elle perd, 'd' égalité
+  const p = S.pending; if (!p || !p.tier) return; const o = nextOpp(p); if (!o) return; pushUndo();
+  const opp = p.ord[o.idx];
+  if (res === 'w') record(p.id, opp, 'w'); else if (res === 'l') record(opp, p.id, 'w'); else record(p.id, opp, 'd');
+  p.n++; p.flip = Math.random() < .5;
+  if (o.kind === 'bs') { if (res === 'w') p.hi = o.idx; else if (res === 'l') p.lo = o.idx + 1; else p.lo = p.hi = o.idx + 1; }
+  else if (o.kind === 'up') { p.up = true; if (res === 'w') { p.lo = 0; p.hi = p.rLo - 1; p.rLo = 0; p.dn = true; } }
+  else { p.dn = true; if (res === 'l') { p.lo = p.rHi + 1; p.hi = p.ord.length; p.rHi = p.ord.length; p.up = true; } }
+  advance();
+}
+function advance(){
+  const p = S.pending;
+  if (!nextOpp(p)) {
+    const it = S.items[p.id]; it.tier = p.tier; S.queue = S.queue.filter(x => x !== p.id); S.pending = null;
+    const nb = p.ord; S.order = S.order.filter(x => x !== p.id);
+    let at;
+    if (p.lo < nb.length && S.order.includes(nb[p.lo])) at = S.order.indexOf(nb[p.lo]);
+    else if (p.lo > 0 && S.order.includes(nb[p.lo - 1])) at = S.order.indexOf(nb[p.lo - 1]) + 1;
+    else at = p.lo >= nb.length ? S.order.length : 0;
+    S.order.splice(at, 0, p.id);
+    FIT.s[p.id] = p.lo > 0 && p.lo < nb.length ? (FIT.s[nb[p.lo - 1]] + FIT.s[nb[p.lo]]) / 2 : TINFO[p.tier].mu;
+    repair(); refit(); lastPlaced = {id: p.id};
+    // entre deux placements : un duel de contrôle sur une série peu comparée du même classement
+    if (S.queue.length && ordOf(p.L).length >= 5) { refine = {L: p.L, left: 1, mode: 'check', recent: [], done: 0}; refine.pair = pickPair(refine); if (!refine.pair) refine = null; }
+  }
+  save(); render();
+}
+
+/* ================= Affinage : duels là où le classement est incertain ================= */
+/* mode 'flow' : continu, tant que tu veux ; 'check' : un duel glissé entre deux placements ; forced : une série précise */
+function startRefine(L = curList, forced = null){
+  if (ordOf(L).length < 2) return; paused = false;
+  refine = forced ? {L, left: 5, mode: 'focus', forced, recent: [], done: 0} : {L, left: Infinity, mode: 'flow', manual: true, recent: [], done: 0};
+  refine.pair = pickPair(refine); if (!refine.pair) { refine = null; toast('Rien à affiner pour l\'instant'); }
+  if (view !== 'duel') go('duel'); else render();
+}
+function wpick(c){ if (!c.length) return null; let r = Math.random() * c.reduce((a, x) => a + x[1], 0); for (const x of c) { r -= x[1]; if (r <= 0) return x[0]; } return c[c.length - 1][0]; }
+/* Choix du duel.
+   1. En priorité les séries dont la place possible est la plus large (peu de duels directs autour d'elles),
+      opposées à une voisine que les duels ne départagent pas encore (le plus souvent la plus proche).
+   2. Parfois un contrôle : deux séries à 2-8 places l'une de l'autre, jamais comparées directement, pour rattraper une erreur de clic.
+   3. Rarement, un duel joué il y a plus de 4 mois, pour voir si ton avis a changé. */
+function pickPair(R){
+  const L = R.L, o = ordOf(L), n = o.length; if (n < 2) return null;
+  const last = lastByPair(), now = Date.now();
+  const ok = (a, b) => !R.recent.includes(pairKey(a, b));
+  const out = (a, b) => Math.random() < .5 ? [a, b] : [b, a];
+  // adversaire : la plus proche voisine (au-dessus ou en dessous) que les duels ne départagent pas encore
+  const partner = i => { const id = o[i], c = [];
+    for (const s of [-1, 1]) for (let j = i + s; j >= FIT.lo[id] && j <= FIT.hi[id]; j += s) if (!proven(L, i, j) && ok(id, o[j])) { c.push([j, 1 / Math.abs(j - i)]); break; }
+    return wpick(c); };
+  if (R.forced) {
+    const i = FIT.rank[R.forced]; if (i == null) return null; let j = partner(i);
+    if (j == null) { const c = []; for (let d = 1; d <= 4; d++) for (const k of [i - d, i + d]) if (k >= 0 && k < n && ok(R.forced, o[k])) c.push([k, 1 / d]); j = wpick(c); }
+    return j == null ? null : out(o[i], o[j]);
+  }
+  const direct = (a, b) => { const d = last.get(pairKey(a, b)); return d && d.r !== 'h'; };
+  const r = Math.random();
+  if (r < .05) { const old = [...last.values()].filter(d => (d.r === 'w' || d.r === 'm') && FIT.rank[d.a] != null && FIT.rank[d.b] != null && listOf(d.a) === L && listOf(d.b) === L && now - d.t > 120 * 864e5 && ok(d.a, d.b));
+    if (old.length) { const d = old[Math.floor(Math.random() * old.length)]; return out(d.a, d.b); } }
+  if (r < .15 && n > 3) for (let t = 0; t < 20; t++) { const i = Math.floor(Math.random() * n), j = i + 2 + Math.floor(Math.random() * 7);
+    if (j < n && !direct(o[i], o[j]) && ok(o[i], o[j])) return out(o[i], o[j]); }
+  const tg = []; for (let i = 0; i < n; i++) { const w = widthOf(o[i]); if (w > 0) tg.push([i, w * (1 + 2 / (1 + FIT.c[o[i]]))]); }
+  for (let t = 0; t < 8 && tg.length; t++) { const i = wpick(tg), j = partner(i); if (j != null) return out(o[i], o[j]); }
+  for (let t = 0; t < 40; t++) { const i = Math.floor(Math.random() * n), j = Math.min(n - 1, i + 1 + Math.floor(Math.random() * 6));
+    if (i !== j && ok(o[i], o[j])) return out(o[i], o[j]); }
+  return null;
+}
+function refineAnswer(winner){ // winner : 0, 1, 'd' égalité, 'skip' passer
+  const R = refine, [a, b] = R.pair;
+  R.recent.push(pairKey(a, b)); if (R.recent.length > 40) R.recent.shift();
+  if (winner === 'skip') { R.pair = pickPair(R); if (!R.pair) refine = null; render(); return; }
+  pushUndo(); const before = Object.assign({}, FIT.rank);
+  if (winner === 'd') record(a, b, 'd'); else record(winner === 0 ? a : b, winner === 0 ? b : a, 'w');
+  repair(); refit();
+  const mv = [a, b].map(id => ({id, d: before[id] - FIT.rank[id]})).filter(x => x.d);
+  if (mv.length) toast(mv.map(x => `${S.items[x.id].t} ${x.d > 0 ? '▲' : '▼'} ${fr(FIT.rank[x.id] + 1)}`).join(' · '));
+  R.done++; R.left--; R.pair = R.left > 0 ? pickPair(R) : null;
+  if (!R.pair) { refine = null; if (R.mode === 'focus') toast(`${R.done} duel${R.done > 1 ? 's' : ''} d'affinage enregistré${R.done > 1 ? 's' : ''}`); }
+  save(); render();
+}
+
+/* ================= Vue Duels ================= */
+function listSwitch(){
+  return `<div class="seg lsw" role="group" aria-label="Classement">${['s', 'a'].map(L => `<button data-list="${L}" aria-pressed="${curList === L}">${LISTS[L].n}<span class="cnt">${ordOf(L).length}</span></button>`).join('')}</div>`;
+}
+function setList(L){
+  if (L === curList) return; curList = L; rankFilter = ''; try { localStorage.setItem('palmares:list', L); } catch(e) {}
+  if (refine && refine.mode === 'flow') refine = null;
+  render();
+}
+function bindListSwitch(root){ root.querySelectorAll('[data-list]').forEach(b => b.onclick = () => setList(b.dataset.list)); }
+function duelCard(it, idAttr, label){
+  return `<button id="${idAttr}" aria-label="${esc(it.t)}">${art(it, 'big', label)}<span><span class="dt">${esc(it.t)}</span><br><span class="dm">${esc(metaOf(it))}</span></span></button>`;
+}
+function placeRange(id){ const lo = FIT.lo[id], hi = FIT.hi[id]; return hi > lo ? `place possible ${fr(lo + 1)} à ${fr(hi + 1)}` : 'place prouvée par tes duels'; }
+function resultCard(){
+  if (!lastPlaced || !S.items[lastPlaced.id] || FIT.rank[lastPlaced.id] == null) return '';
+  const id = lastPlaced.id, r = FIT.rank[id], it = S.items[id], o = ordOf(listOf(id));
+  const above = o[r - 1], below = o[r + 1];
+  return `<div class="result">${art(it, 'sm')}<div><b>${esc(it.t)}</b> arrive <b>${fr(r + 1)}</b> sur ${o.length} ${LISTS[listOf(id)].pl} · ${fmtNote(noteOf(id))}/10
+    <div class="kbd">${above ? `sous ${esc(S.items[above].t)}` : 'tout en haut'}${below ? ` · devant ${esc(S.items[below].t)}` : ''}</div></div></div>`;
+}
+function renderDuel(){
+  const el = $('#v-duel');
+  if (refine && refine.mode === 'flow' && !refine.manual && S.queue.length) refine = null;   // les nouvelles séries passent avant
+  if (refine && refine.pair && refine.pair.some(id => FIT.rank[id] == null || listOf(id) !== refine.L)) { refine.pair = pickPair(refine); if (!refine.pair) refine = null; }
+  if (!refine && !paused && catDone && !ensurePending() && ordOf(curList).length >= 2) { refine = {L: curList, left: Infinity, mode: 'flow', recent: [], done: 0}; refine.pair = pickPair(refine); if (!refine.pair) refine = null; }
+  if (refine && refine.pair) {
+    const R = refine, [a, b] = R.pair.map(id => S.items[id]);
+    const lab = x => fr(FIT.rank[x.id] + 1) + ' · ' + fmtNote(noteOf(x.id));
+    const nU = ordOf(R.L).filter(id => widthOf(id) > 0).length;
+    const head = {check: ['Contrôle rapide', 'Une série peu comparée, avant la suivante.'],
+      focus: [`Affinage · encore ${R.left}`, `Autour de « ${esc(S.items[R.forced]?.t || '')} ».`],
+      flow: ['Affinage continu', nU ? `${nU} ${LISTS[R.L].pl} dont la place n'est pas encore prouvée. Les moins comparées passent en premier.` : 'Toutes les places sont prouvées. Les duels servent maintenant de contrôle.']}[R.mode];
+    el.innerHTML = `${R.mode === 'check' ? resultCard() : ''}<div class="row between" style="align-items:flex-end"><div><p class="eyebrow">${head[0]}${R.mode === 'flow' && R.done ? ` · ${R.done} fait${R.done > 1 ? 's' : ''}` : ''}</p><h2>Tu préfères laquelle ?</h2></div>${R.mode === 'flow' ? listSwitch() : `<span class="pill">${LISTS[R.L].n}</span>`}</div>
+      <div class="duel">${duelCard(a, 'cA', lab(a))}${duelCard(b, 'cB', lab(b))}<span class="vs">VS</span></div>
+      <div class="row"><button class="btn" id="tie">Impossible de choisir</button><button class="btn" id="pass">Passer</button>
+        <button class="btn ghost" id="stop">${R.mode === 'check' ? 'Classer la suivante' : R.mode === 'flow' ? 'Pause' : 'Terminer'}</button><button class="btn ghost sm" id="u" ${undo.length ? '' : 'disabled'}>Annuler</button></div>
+      <p class="kbd">${head[1]} Clavier : ← → choisir, ↓ égalité, ↑ passer.</p>`;
+    $('#cA').onclick = () => refineAnswer(0); $('#cB').onclick = () => refineAnswer(1); $('#tie').onclick = () => refineAnswer('d'); $('#pass').onclick = () => refineAnswer('skip');
+    $('#stop').onclick = () => { if (R.mode === 'flow') paused = true; refine = null; render(); }; $('#u').onclick = popUndo; bindListSwitch(el); return;
+  }
+  const p = ensurePending();
+  if (!p) {
+    if (!Object.keys(S.items).length) {
+      el.innerHTML = `<div><p class="eyebrow">Comment ça marche</p><h2>Ton classement, un duel à la fois</h2></div>
+        <div class="panel"><ol class="steps">
+          <li><div><b>Fais l'inventaire.</b> <span class="muted">Cherche des titres, colle une liste, ou parcours un mur d'affiches pour réveiller ta mémoire.</span></div></li>
+          <li><div><b>Un tri rapide.</b> <span class="muted">Pour chaque série : adorée, bien, ou bof. À l'instinct.</span></div></li>
+          <li><div><b>Quelques duels.</b> <span class="muted">« Tu préfères laquelle ? » 4 à 8 duels suffisent pour la placer, même parmi 300 séries.</span></div></li>
+          <li><div><b>Ça reste vivant.</b> <span class="muted">Chaque duel est gardé. Les séries peu comparées reviennent régulièrement, et tout est recalculé à chaque réponse.</span></div></li>
+        </ol><div class="row"><button class="btn primary" id="go-add">Ajouter mes séries</button></div></div>`;
+      $('#go-add').onclick = () => go('add'); return;
+    }
+    const n = ordOf(curList).length;
+    el.innerHTML = `<div class="row between"><div><p class="eyebrow">Duels</p><h2>Tout est classé</h2></div>${listSwitch()}</div>${resultCard()}
+      <div class="empty"><p>${n} ${n > 1 ? LISTS[curList].pl : LISTS[curList].one} dans ce classement. L'affinage continu propose d'abord les séries dont la place n'est pas encore prouvée.</p>
+      <div class="row" style="justify-content:center"><button class="btn primary" id="go-ref" ${n < 2 ? 'disabled' : ''}>Reprendre l'affinage</button><button class="btn" id="go-add">Ajouter des séries</button></div></div>
+      ${undo.length ? '<div class="row"><button class="btn ghost sm" id="u">Annuler la dernière action</button></div>' : ''}`;
+    $('#go-add').onclick = () => go('add'); $('#go-ref').onclick = () => startRefine(curList); bindListSwitch(el); const u = $('#u'); if (u) u.onclick = popUndo; return;
+  }
+  const it = S.items[p.id]; const qn = S.queue.length, L = listOf(p.id);
+  const ctrl = `<div class="row between"><button class="btn ghost sm" id="skip">Plus tard</button><button class="btn ghost sm" id="notseen">Pas vue, retirer</button><button class="btn ghost sm" id="u" ${undo.length?'':'disabled'}>Annuler</button></div>`;
+  if (!p.tier) {
+    const cnt = t => ordOf(L).filter(id => S.items[id].tier === t).length;
+    el.innerHTML = `${resultCard()}<div><p class="eyebrow">${qn} à classer</p><h2>Tu l'as trouvée comment ?</h2></div>
+      <div class="solo">${art(it, 'big')}<div><span class="st">${esc(it.t)}</span><span class="muted small">${esc(metaOf(it))}</span>
+        <div class="seg" role="group" aria-label="Classement de cette série"><button data-an="0" aria-pressed="${L === 's'}">Série</button><button data-an="1" aria-pressed="${L === 'a'}">Animé</button></div>
+        <span class="muted small">Premier tri à l'instinct, dans le classement ${LISTS[L].n.toLowerCase()}. Les duels peuvent ensuite la faire passer au-dessus ou en dessous.</span></div></div>
+      <div class="tierpick">
+        <button data-t="love"><b>Adorée</b><span>${cnt('love')} déjà</span></button>
+        <button data-t="good"><b>Bien</b><span>${cnt('good')} déjà</span></button>
+        <button data-t="meh"><b>Bof</b><span>${cnt('meh')} déjà</span></button>
+        <button data-t="drop"><b>Pas finie</b><span>Mise de côté</span></button>
+        <button data-t="auto" style="grid-column:1/-1;border-left:5px solid var(--accent)"><b>Laisse les duels décider</b><span>Recherche sur tout le classement, 1 ou 2 duels de plus</span></button>
+      </div><p class="kbd">Clavier : 1 2 3 4, 5 pour les duels seuls</p>${ctrl}`;
+    el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => pickTier(b.dataset.t));
+    el.querySelectorAll('[data-an]').forEach(b => b.onclick = () => { const v = b.dataset.an === '1'; if (!!it.an === v) return; it.an = v; save(); render(); });
+  } else {
+    const o = nextOpp(p); const other = S.items[p.ord[o.idx]];
+    const est = o.kind === 'bs' ? Math.ceil(Math.log2(p.hi - p.lo + 1)) + 1 : 1;
+    const dots = Array.from({length: p.n + est}, (_, i) => `<i class="${i < p.n ? 'on' : ''}"></i>`).join('');
+    const A = p.flip ? other : it, B = p.flip ? it : other;
+    const lab = x => x === it ? 'à placer' : fr(o.idx + 1) + ' · ' + fmtNote(noteOf(x.id));
+    el.innerHTML = `${resultCard()}<div><p class="eyebrow">${o.kind === 'bs' ? 'Placement' : 'Vérification de frontière'} · ${LISTS[L].n} · ${TINFO[p.tier].n}</p><h2>Tu préfères laquelle ?</h2></div>
+      <div class="duel">${duelCard(A, 'cA', lab(A))}${duelCard(B, 'cB', lab(B))}<span class="vs">VS</span></div>
+      <div class="row between"><div class="dots" aria-label="Progression">${dots}</div><span class="kbd">entre la ${fr(p.lo + 1)} et la ${fr(p.hi + 1)} place</span></div>
+      <div class="row"><button class="btn" id="tie">Impossible de choisir</button></div>
+      <p class="kbd">Clavier : ← → pour choisir, ↓ égalité</p>${ctrl}`;
+    $('#cA').onclick = () => answer(A === it ? 'w' : 'l'); $('#cB').onclick = () => answer(B === it ? 'w' : 'l'); $('#tie').onclick = () => answer('d');
+  }
+  $('#skip').onclick = () => { pushUndo(); S.queue.push(S.queue.shift()); S.pending = null; save(); render(); };
+  $('#notseen').onclick = () => { pushUndo(); const t = it.t; if (it.tm) S.skipped.push('#' + it.tm); removeItem(p.id); save(); render(); toast(`« ${t} » retirée`); };
+  $('#u').onclick = popUndo;
+}
+document.addEventListener('keydown', e => {
+  if (view !== 'duel' || sheetId || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowLeft') { $('#cA')?.click(); return; } if (e.key === 'ArrowRight') { $('#cB')?.click(); return; } if (e.key === 'ArrowDown') { $('#tie')?.click(); return; }
+  if (e.key === 'ArrowUp') { $('#pass')?.click(); return; }
+  const p = S.pending; if (p && !p.tier && !refine) { const t = {'1':'love','2':'good','3':'meh','4':'drop','5':'auto'}[e.key]; if (t) pickTier(t); }
+});
+
+/* ================= Vue Ajouter ================= */
+const q = $('#q');
+function renderHits(){
+  const s = q.value.trim(); const box = $('#hits'); if (!s) { box.hidden = true; box.innerHTML = ''; return; }
+  const pt = parseTitle(s), k = norm(pt.t); let hits = [];
+  if (k.length >= 2) for (const c of CAT) { const pos = c.keys.indexOf(k); if (pos >= 0) { hits.push([c, (pos === 0 ? 0 : 1) * 5000 + c.i]); } }
+  hits = hits.sort((a, b) => a[1] - b[1]).slice(0, 7).map(h => h[0]);
+  const exact = hits.some(h => h.k === k) || hasItem(pt.t);
+  box.innerHTML = hits.map(c => { const has = hasItem(c.n, c.tm);
+    return `<button class="hit" data-tm="${c.tm}" ${has ? 'disabled' : ''}>${art(c, 'sm')}<span><b>${esc(c.n)}</b><span class="y">${[c.y, c.net].filter(Boolean).join(' · ')}</span></span><span class="tg">${has ? 'déjà là' : 'Ajouter'}</span></button>`; }).join('')
+    + (exact ? '' : `<button class="hit free" id="free">Ajouter « ${esc(pt.t)} »${pt.y ? ` (${pt.y})` : ''} sans affiche</button>`);
+  box.hidden = !box.innerHTML;
+  box.querySelectorAll('[data-tm]').forEach(b => b.onclick = () => { const c = CAT_TM.get(+b.dataset.tm); doAdd(c.n, c.y, c); });
+  const f = $('#free'); if (f) f.onclick = () => doAdd(pt.t, pt.y, null, true);
+}
+function doAdd(t, y, c, free){ pushUndo(); const id = addItem(t, y, {cat: c || (free ? null : undefined)}); if (!id) { toast('Déjà dans ta liste'); return; }
+  if (free) { const it = S.items[id]; delete it.tm; it.nm = !catReady ? undefined : true; }
+  save(); q.value = ''; render(); q.focus(); toast(`« ${S.items[id].t} » ajoutée, à classer dans Duels`); }
+q.addEventListener('input', renderHits);
+q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const b = $('#hits button:not([disabled])'); if (b) b.click(); } });
+$('#bulk-go').onclick = () => { pushUndo(); let n = 0, d = 0;
+  for (const line of $('#bulk').value.split(/\r?\n/)) { if (!line.trim()) continue; const p = parseTitle(line); if (!p.t) continue; if (addItem(p.t, p.y)) n++; else d++; }
+  save(); render(); $('#bulk').value = ''; toast(`${n} ajoutée${n>1?'s':''}${d ? ` · ${d} déjà présente${d>1?'s':''}` : ''}`); };
+
+/* Découverte : mur d'affiches ou cartes à swiper */
+let discCat = 'reco', discMode = 'grid', gridSel = new Set(), deckHist = [];
+try { discMode = localStorage.getItem('palmares:disc') || 'grid'; } catch(e) {}
+function pool(){
+  const tms = new Set(), ks = new Set(); for (const it of Object.values(S.items)) { if (it.tm) tms.add(it.tm); ks.add(norm(it.t)); }
+  const sk = new Set(S.skipped);
+  const P = CAT.filter(c => inCat(c, discCat) && !tms.has(c.tm) && !sk.has('#' + c.tm) && !ks.has(c.k));
+  if (discCat !== 'reco') return P;
+  const R = recoScores().m; return P.sort((a, b) => (R.get(b.tm)?.sc || 0) - (R.get(a.tm)?.sc || 0));
+}
+function renderCats(){ $('#cats').innerHTML = CATS.map(([k, n]) => `<button aria-pressed="${k === discCat}" data-c="${k}">${n}</button>`).join('');
+  $('#cats').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { discCat = b.dataset.c; gridSel.clear(); renderCats(); renderDisc(); }); }
+function setMode(m){ discMode = m; try { localStorage.setItem('palmares:disc', m); } catch(e) {} $('#m-grid').setAttribute('aria-pressed', m === 'grid'); $('#m-cards').setAttribute('aria-pressed', m === 'cards'); renderDisc(); }
+$('#m-grid').onclick = () => setMode('grid'); $('#m-cards').onclick = () => setMode('cards');
+function renderDisc(){
+  const box = $('#disc');
+  $('#disc-help').textContent = discMode === 'grid' ? 'Touche les affiches des séries que tu as vues, puis valide la page : les autres sont marquées « pas vue » et ne reviendront plus.' : 'Swipe à droite si tu l\'as vue, à gauche sinon.';
+  if (!catReady) { box.innerHTML = '<p class="muted small">Chargement des affiches…</p>'; return; }
+  const P = pool(); const tot = CAT.filter(c => inCat(c, discCat)).length;
+  const head = discCat === 'reco' ? `<p class="kbd">Les séries que tu as le plus probablement vues d'après celles que tu as déjà rangées (vues, pas vues, pas finies). ${P.length} restantes.</p>` : `<p class="kbd">${tot - P.length} / ${tot} passées en revue dans cette catégorie</p>`;
+  const R = discCat === 'reco' ? recoScores().m : null; const why = c => { const r = R && R.get(c.tm); return r && r.why.length ? 'comme ' + r.why.join(', ') : ''; };
+  if (!P.length) { box.innerHTML = head + '<div class="empty"><b>Catégorie terminée</b><span>Choisis une autre catégorie ou passe aux duels.</span></div>'; return; }
+  if (discMode === 'grid') {
+    const page = P.slice(0, 24);
+    box.innerHTML = head + `<div class="grid">${page.map(c => `<button class="gcell ${gridSel.size ? 'dim' : ''}" data-tm="${c.tm}" aria-pressed="${gridSel.has(c.tm)}">${art(c, 'big')}<span class="ck">${gridSel.has(c.tm) ? '✓' : ''}</span><span class="gn">${esc(c.n)}</span>${R ? `<span class="gw">${esc(why(c))}</span>` : ''}</button>`).join('')}</div>
+      <div class="row between"><button class="btn primary" id="g-ok">Valider : ${gridSel.size} vue${gridSel.size>1?'s':''}, ${page.length - gridSel.size} pas vue${page.length - gridSel.size>1?'s':''}</button><button class="btn ghost sm" id="g-undo" ${deckHist.length ? '' : 'disabled'}>Annuler la page</button></div>`;
+    box.querySelectorAll('.gcell').forEach(b => b.onclick = () => { const tm = +b.dataset.tm; gridSel.has(tm) ? gridSel.delete(tm) : gridSel.add(tm); renderDisc(); });
+    $('#g-ok').onclick = () => { pushUndo(); const added = [], sk = [];
+      for (const c of page) { if (gridSel.has(c.tm)) { const id = addItem(c.n, c.y, {cat: c}); if (id) added.push(id); } else { S.skipped.push('#' + c.tm); sk.push('#' + c.tm); } }
+      deckHist.push({added, sk}); gridSel.clear(); save(); render(); toast(`${added.length} ajoutée${added.length>1?'s':''} à classer`); };
+    $('#g-undo').onclick = undoDisc;
+  } else {
+    const [c, n] = P;
+    box.innerHTML = head + `<div class="deck" id="deck">${n ? `<div class="card back">${art(n, 'big')}</div>` : ''}<div class="card front" id="front">${art(c, 'big')}<div class="cn">${esc(c.n)} <span class="muted">${c.y || ''}</span>${R && why(c) ? `<div class="gw">${esc(why(c))}</div>` : ''}</div></div><span class="stamp yes" id="sy">VUE</span><span class="stamp no" id="sn">PAS VUE</span></div>
+      <div class="deckbtns"><button class="btn no" id="d-no">← Pas vue</button><button class="btn" id="d-drop">Pas finie</button><button class="btn yes" id="d-yes">Vue →</button></div>
+      <div class="row"><button class="btn ghost sm" id="d-undo" ${deckHist.length ? '' : 'disabled'}>Annuler le dernier</button></div>`;
+    const act = kind => { const added = [], sk = [];
+      if (kind === 'no') { S.skipped.push('#' + c.tm); sk.push('#' + c.tm); } else { const id = addItem(c.n, c.y, {cat: c, dropped: kind === 'drop'}); if (id) added.push(id); }
+      deckHist.push({added, sk}); if (deckHist.length > 60) deckHist.shift(); save(); render(); };
+    $('#d-no').onclick = () => act('no'); $('#d-yes').onclick = () => act('yes'); $('#d-drop').onclick = () => act('drop'); $('#d-undo').onclick = undoDisc;
+    bindSwipe($('#front'), dx => act(dx > 0 ? 'yes' : 'no'));
+  }
+}
+function undoDisc(){ const h = deckHist.pop(); if (!h) return; for (const id of h.added) if (S.items[id] && !S.items[id].tier) removeItem(id);
+  const sk = new Set(h.sk); S.skipped = S.skipped.filter(k => !sk.has(k)); save(); render(); }
+function bindSwipe(el, cb){
+  let x0 = null, dx = 0; const sy = $('#sy'), sn = $('#sn');
+  el.addEventListener('pointerdown', e => { x0 = e.clientX; dx = 0; el.setPointerCapture(e.pointerId); el.style.transition = 'none'; });
+  el.addEventListener('pointermove', e => { if (x0 == null) return; dx = e.clientX - x0; el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; sy.style.opacity = Math.max(0, dx / 90); sn.style.opacity = Math.max(0, -dx / 90); });
+  const end = () => { if (x0 == null) return; x0 = null; el.style.transition = '';
+    if (Math.abs(dx) > 80) { el.style.transform = `translateX(${dx > 0 ? 400 : -400}px) rotate(${dx > 0 ? 20 : -20}deg)`; el.style.opacity = 0; setTimeout(() => cb(dx), 160); }
+    else { el.style.transform = ''; sy.style.opacity = 0; sn.style.opacity = 0; } };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+}
+document.addEventListener('keydown', e => { if (view !== 'add' || discMode !== 'cards' || /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight') $('#d-yes')?.click(); else if (e.key === 'ArrowLeft') $('#d-no')?.click(); });
+
+/* Suggestions de Claude */
+let sampleFn = null, aiShown = new Set();
+try { aiShown = new Set(JSON.parse(localStorage.getItem('palmares:ai') || '[]')); } catch(e) {}
+const aiSave = () => { try { localStorage.setItem('palmares:ai', JSON.stringify([...aiShown].slice(-400))); } catch(e) {} };
+async function initSample(){ try { sampleFn = await claude.use('sample'); } catch(e) {} $('#ai-panel').hidden = !sampleFn; }
+$('#ai-go').onclick = async () => {
+  if (!sampleFn) return; const seen = Object.values(S.items).map(it => it.t + (it.y ? ` (${it.y})` : ''));
+  if (seen.length < 3) { $('#ai-status').textContent = 'Ajoute au moins 3 séries d\'abord.'; return; }
+  const notSeen = S.skipped.filter(k => k[0] === '#').map(k => CAT_TM.get(+k.slice(1))?.n).filter(Boolean).slice(-300);
+  const R = recoScores().m, cand = [...R.entries()].sort((a, b) => b[1].sc - a[1].sc).map(([tm]) => CAT_TM.get(tm)).filter(c => !aiShown.has(c.n)).slice(0, 80).map(c => c.n + (c.y ? ` (${c.y})` : ''));
+  const btn = $('#ai-go'); btn.disabled = true; $('#ai-status').textContent = 'Claude réfléchit…';
+  const prompt = `Une personne essaie de retrouver toutes les séries qu'elle a regardées dans sa vie, pour les classer. Elle en a oublié beaucoup.
+
+Séries qu'elle a vues :
+${seen.slice(-250).join('\n')}
+
+Séries qu'elle n'a PAS vues (ne pas proposer) : ${notSeen.join(', ') || '(aucune)'}
+Déjà proposées (ne pas reproposer) : ${[...aiShown].slice(-200).join(', ') || '(aucune)'}
+
+Pistes du catalogue, classées par ressemblance avec ses séries (tu peux en reprendre, mais choisis selon ton jugement et ajoute aussi des séries hors de cette liste) :
+${cand.join(', ')}
+
+Propose 25 autres séries qu'elle a très probablement vues aussi : même époque, mêmes plateformes, mêmes pays, mêmes genres, séries souvent regardées par les fans de ces titres. Inclue quelques séries moins connues qui collent à ses goûts. Donne le titre original (ou le titre le plus connu).
+Réponds uniquement avec un tableau JSON : [{"title":"...","year":2014,"why":"raison courte en français, 8 mots max"}]`;
+  try {
+    const arr = await sampleFn.json(prompt, {cache: false});
+    const list = (Array.isArray(arr) ? arr : []).filter(x => x && x.title).map(x => ({...x, c: findCat(String(x.title), +x.year || null)})).filter(x => !hasItem(x.c ? x.c.n : String(x.title), x.c ? x.c.tm : null) && !(x.c && S.skipped.includes('#' + x.c.tm)) && !S.skipped.includes(norm(String(x.title))) && !aiShown.has(x.c ? x.c.n : String(x.title))).slice(0, 20);
+    list.forEach(x => { aiShown.add(String(x.title)); if (x.c) aiShown.add(x.c.n); }); aiSave();
+    $('#ai-status').textContent = list.length ? '' : 'Rien de neuf cette fois, réessaie.';
+    const box = $('#ai-list'); box.hidden = false;
+    box.innerHTML = list.map((x, i) => `<div class="ai-item" data-i="${i}">${art(x.c || {t: x.title, y: x.year}, 'sm')}<div><span><b>${esc(x.c ? x.c.n : x.title)}</b> <span class="muted small">${+x.year || ''}</span></span><small>${esc(x.why || '')}</small>
+      <div class="row"><button class="btn sm no" data-a="no">Pas vue</button><button class="btn sm yes" data-a="yes">Vue</button></div></div></div>`).join('');
+    box.querySelectorAll('.ai-item').forEach(row => row.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+      const x = list[+row.dataset.i];
+      if (b.dataset.a === 'yes') { pushUndo(); addItem(x.c ? x.c.n : String(x.title), +x.year || null, {cat: x.c}); save(); renderStats(); }
+      else { S.skipped.push(x.c ? '#' + x.c.tm : norm(String(x.title))); save(); }
+      row.remove(); }));
+  } catch(e) {
+    const m = {not_granted:'Accès à Claude refusé pour cette page.', sampling_disabled:'Claude n\'est pas disponible sur ce compte.', rate_limited:'Trop de demandes, réessaie dans un moment.', invalid_json:'Réponse illisible, réessaie.'}[e && e.code];
+    $('#ai-status').textContent = m || 'Échec de la demande, réessaie.';
+    if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled')) $('#ai-panel').hidden = true;
+  }
+  btn.disabled = false;
+};
+
+/* ================= Recommandations « Pour toi » =================
+   Pour chaque série du catalogue pas encore rangée, on estime la probabilité que tu l'aies vue
+   à partir des séries déjà rangées : vues (positives, pondérées par le palier) et « pas vue » (négatives).
+   Ressemblance = genres communs, même origine (animé japonais, française, britannique…), même chaîne,
+   même époque, popularité comparable. Les voisines les plus proches comptent beaucoup plus (noyau exponentiel). */
+const GENRES = {a:'Drame',b:'Comédie',c:'Romance',d:'Policier',e:'Action',f:'Aventure',g:'Mystère',h:'Animé',i:'Histoire',j:'Thriller',k:'Fantastique',l:'Jeunesse',m:'Famille',n:'Science-fiction',o:'Cuisine',p:'Musique',q:'Sport',r:'Voyage',s:'Nature',t:'Guerre',u:'Horreur',v:'Surnaturel',w:'Médical',x:'Bricolage',y:'Judiciaire',z:'Espionnage',A:'Western',B:'Adulte'};
+const genresOf = c => c && c.g ? [...c.g].map(k => GENRES[k]).filter(Boolean) : [];
+function ficheOf(it){ const c = catOf(it); const y = it.y || (c && c.y);
+  const yrs = y ? (c && c.e && c.e !== y ? `${y} – ${c.e}` : String(y)) : '';
+  const meta = [yrs, c && c.net].filter(Boolean).join(' · '), g = genresOf(c);
+  return `<span class="muted small">${esc(meta)}</span>${g.length ? `<span class="gchips">${g.map(x => `<span>${esc(x)}</span>`).join('')}</span>` : ''}`; }
+function catFeat(c){ if (c._f) return c._f; let gm = 0; for (const k of c.g || '') { const i = 'abcdefghijklmnopqrstuvwxyzAB'.indexOf(k); if (i >= 0) gm |= 1 << i; }
+  const reg = c.f.includes('j') ? 'j' : c.f.includes('a') ? 'a' : c.f.includes('k') ? 'k' : c.f.includes('f') ? 'f' : c.f.includes('u') ? 'u' : c.f.includes('e') ? 'e' : '';
+  return c._f = {gm, reg, net: c.net, y: c.y || 2010, lp: Math.log(c.i + 100), doc: c.f.includes('o')}; }
+const pc = x => { x -= (x >> 1) & 0x55555555; x = (x & 0x33333333) + ((x >> 2) & 0x33333333); return (((x + (x >> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; };
+function simF(a, b){ const u = pc(a.gm | b.gm), g = u ? pc(a.gm & b.gm) / u : .3;
+  return 1.3 * g + (a.reg === b.reg ? .7 : 0) + (a.net && a.net === b.net ? .45 : 0) + .5 * Math.exp(-Math.abs(a.y - b.y) / 6) + .45 * Math.exp(-Math.abs(a.lp - b.lp)) - (a.doc !== b.doc ? .8 : 0); }
+let recoCache = null;
+function recoScores(){
+  const key = Object.keys(S.items).length + ':' + S.skipped.length + ':' + CAT.length; if (recoCache && recoCache.key === key) return recoCache;
+  const TW = {love: 1.6, good: 1.2, meh: .8, auto: 1, drop: .7};
+  const lab = [];   // [feat, poids, positif, nom]
+  for (const it of Object.values(S.items)) { const c = catOf(it); if (!c) continue; lab.push([catFeat(c), S.dropped.includes(it.id) ? .7 : TW[it.tier] || 1, 1, it.t]); }
+  for (const k of S.skipped) if (k[0] === '#') { const c = CAT_TM.get(+k.slice(1)); if (c) lab.push([catFeat(c), 1, 0, '']); }
+  const npos = lab.filter(x => x[2]).length, base = (npos + 2) / (lab.length + 4);
+  const seen = new Set(), ks = new Set(Object.values(S.items).map(it => norm(it.t))); for (const it of Object.values(S.items)) if (it.tm) seen.add(it.tm);
+  const sk = new Set(S.skipped), out = new Map();
+  for (const c of CAT) { if (seen.has(c.tm) || sk.has('#' + c.tm) || ks.has(c.k)) continue;
+    const f = catFeat(c); let num = base * 3, den = 3, b1 = null, b2 = null, s1 = -1, s2 = -1;
+    for (const [lf, w, pos, nm] of lab) { const s = simF(f, lf), k = w * Math.exp(4 * s); den += k; if (pos) { num += k; if (s > s1) { s2 = s1; b2 = b1; s1 = s; b1 = nm; } else if (s > s2) { s2 = s; b2 = nm; } } }
+    const p = num / den; out.set(c.tm, {p, sc: p * (.6 + .4 * Math.exp(-c.i / 1500)), why: [b1, b2].filter(Boolean)}); }
+  return recoCache = {key, m: out};
+}
+
+/* ================= Amis : partager son classement, comparer =================
+   Un « profil » est une photo de ton classement : {v, id, n (prénom), at, s: [[clé, note×10]…] dans l'ordre, a: animés, p: pas finies}.
+   Clé = id du catalogue (nombre) ou titre (texte) pour une série hors catalogue. Le lien de partage contient ce profil compressé :
+   aucun serveur, chacun garde son propre classement sur son appareil. */
+const SITE = "";
+let BAKED = {}, amiSel = null, amiTab = 'disc';
+try { amiTab = localStorage.getItem('palmares:amitab') || 'disc'; amiSel = localStorage.getItem('palmares:amisel'); } catch(e) {}
+function friends(){ const off = new Set(S.amisOff || []), out = {};
+  for (const P of [...Object.values(BAKED), ...Object.values(S.amis || {})]) { if (!P || off.has(P.id) || (S.me && P.id === S.me.id)) continue; if (!out[P.id] || (out[P.id].at || 0) < (P.at || 0)) out[P.id] = P; }
+  return Object.values(out).sort((a, b) => a.n.localeCompare(b.n)); }
+const keyOf = it => it.tm != null ? it.tm : it.t;
+function myProfile(){
+  if (!S.me) S.me = {id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), n: ''};
+  const row = id => [keyOf(S.items[id]), Math.round(noteOf(id) * 10)];
+  return {v: 1, id: S.me.id, n: S.me.n || 'Anonyme', at: Date.now(), s: ordOf('s').map(row), a: ordOf('a').map(row), p: S.dropped.map(id => keyOf(S.items[id]))};
+}
+const b64u = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 8192) s += String.fromCharCode(...bytes.subarray(i, i + 8192)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64u = s => { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/')); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+const pipeBytes = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+async function encProfile(P){ const raw = new TextEncoder().encode(JSON.stringify(P));
+  try { return 'z' + b64u(await pipeBytes(raw, new CompressionStream('deflate-raw'))); } catch(e) { return 'j' + b64u(raw); } }
+async function decProfile(code){
+  const m = String(code).match(/ami=([A-Za-z0-9_-]+)/); code = m ? m[1] : String(code).trim();
+  const bytes = unb64u(code.slice(1)); const raw = code[0] === 'z' ? await pipeBytes(bytes, new DecompressionStream('deflate-raw')) : bytes;
+  const P = JSON.parse(new TextDecoder().decode(raw));
+  if (!P || P.v !== 1 || !P.id || !Array.isArray(P.s)) throw new Error('bad'); P.n = String(P.n || 'Ami').slice(0, 40); P.a = P.a || []; P.p = P.p || []; return P; }
+function addFriend(P){ S.amis = S.amis || {}; S.amisOff = (S.amisOff || []).filter(x => x !== P.id); S.amis[P.id] = P; amiSel = P.id; save(); }
+const shareBase = () => /^https?:/.test(location.protocol) && !/claude|anthropic/.test(location.host) ? location.origin + location.pathname : (SITE.startsWith('http') ? SITE : '');
+
+/* Lecture d'un profil : chaque entrée rattachée au catalogue et à ta propre liste */
+function myIndex(){ const tm = new Map(), nk = new Map(); for (const it of Object.values(S.items)) { if (it.tm != null) tm.set(it.tm, it.id); nk.set(norm(it.t), it.id); } return {tm, nk, sk: new Set(S.skipped)}; }
+function entries(P){ const ix = myIndex(); const out = [];
+  const mk = (k, nt, L, r, drop) => { let c = typeof k === 'number' ? CAT_TM.get(k) : null;
+    if (!c && typeof k === 'string') { const l = CAT_KEYS.get(norm(k)); if (l) c = CAT[l[0]]; }
+    const t = c ? c.n : String(k), my = (c && ix.tm.get(c.tm)) || ix.nk.get(norm(t)) || (c && ix.nk.get(c.k));
+    const no = !my && (c ? ix.sk.has('#' + c.tm) : ix.sk.has(norm(t)));
+    return {k, c, t, y: c ? c.y : null, nt: nt / 10, L, r, drop, my, no}; };
+  for (const L of ['s', 'a']) (P[L] || []).forEach(([k, nt], r) => out.push(mk(k, nt, L, r, false)));
+  for (const k of P.p || []) out.push(mk(k, 0, null, null, true));
+  return out; }
+const artE = e => e.c ? art(e.c, 'sm') : art({t: e.t, y: e.y, nm: true}, 'sm');
+function myState(id){ if (FIT.rank[id] != null) return `toi : ${fr(FIT.rank[id] + 1)} · ${fmtNote(noteOf(id))}`; return S.dropped.includes(id) ? 'toi : pas finie' : 'toi : à classer'; }
+function compare(P){ const E = entries(P), common = E.filter(e => e.my && !e.drop && FIT.rank[e.my] != null);
+  let ok = 0, tot = 0; const n = {s: (P.s || []).length, a: (P.a || []).length};
+  for (let i = 0; i < common.length; i++) for (let j = i + 1; j < common.length; j++) { const A = common[i], B = common[j];
+    if (A.L !== B.L || listOf(A.my) !== listOf(B.my)) continue; tot++; if ((A.r < B.r) === (FIT.rank[A.my] < FIT.rank[B.my])) ok++; }
+  const gap = e => { const mo = ordOf(listOf(e.my)).length; return (FIT.rank[e.my] / Math.max(1, mo - 1)) - (e.r / Math.max(1, n[e.L] - 1)); };
+  common.forEach(e => e.gap = gap(e));
+  return {E, common, acc: tot >= 10 ? Math.round(100 * ok / tot) : null,
+    disc: E.filter(e => !e.my && !e.no && !e.drop), notSeen: E.filter(e => !e.my && e.no && !e.drop),
+    mine: Object.values(S.items).filter(it => FIT.rank[it.id] != null && !E.some(e => e.my === it.id)).sort((a, b) => (listOf(a.id) === 'a') - (listOf(b.id) === 'a') || FIT.rank[a.id] - FIT.rank[b.id])}; }
+
+function renderAmis(){
+  const el = $('#v-amis'), F = friends(); if (!F.some(P => P.id === amiSel)) amiSel = F[0] ? F[0].id : null;
+  let h = `<div><p class="eyebrow">Entre amis</p><h2>Comparer vos classements</h2></div>`;
+  if (!F.length) h += `<div class="empty"><b>Aucun classement d'ami pour l'instant</b><span>Envoie ton lien à tes amis (ci-dessous) et colle le leur quand ils te le renvoient.</span></div>`;
+  else {
+    if (F.length > 1) h += `<div class="chips">${F.map(P => `<button data-ami="${esc(P.id)}" aria-pressed="${P.id === amiSel}">${esc(P.n)}</button>`).join('')}</div>`;
+    const P = F.find(x => x.id === amiSel), C = compare(P), mineN = Object.keys(FIT.rank).length;
+    h += `<div class="panel"><div class="row between"><h3>${esc(P.n)}</h3><span class="kbd">photo du ${new Date(P.at).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}</span></div>
+      <div class="astats"><div><b>${P.s.length}</b><span>séries</span></div><div><b>${P.a.length}</b><span>animés</span></div><div><b>${C.common.length}</b><span>en commun</span></div><div><b>${C.acc != null ? C.acc + ' %' : '–'}</b><span>d'accord</span></div></div>
+      <p class="kbd">${!mineN ? `Tu n'as encore rien classé. Commence par « À découvrir » : dis ce que tu as vu parmi ses séries, puis fais tes duels.` : C.acc != null ? `« D'accord » : sur deux séries que vous avez vues tous les deux, la part de cas où vous préférez la même.` : 'Classez quelques séries en commun pour voir votre taux d\'accord.'}</p>
+      ${C.common.length >= 6 ? `<div><p class="kbd" style="margin-bottom:6px">Vos plus gros désaccords</p><div class="mvrow">${[...C.common].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, 4).map(e => `<button class="mvchip" data-open="${e.my}"><span class="${e.gap < 0 ? 'mv-up' : 'mv-dn'}">${e.gap < 0 ? 'toi ▲' : 'toi ▼'}</span> ${esc(e.t)}</button>`).join('')}</div></div>` : ''}</div>`;
+    const tabs = [['disc', 'À découvrir', C.disc.length], ['rank', 'Son classement', P.s.length + P.a.length], ['common', 'En commun', C.common.length], ['mine', 'Que toi', C.mine.length]];
+    h += `<div class="chips">${tabs.map(([k, n, c]) => `<button data-at="${k}" aria-pressed="${amiTab === k}">${n} <span class="muted">${c}</span></button>`).join('')}</div>`;
+    const row = (e, i, right, sub) => `<li class="arow${i != null ? '' : ' nr'}">${i != null ? `<span class="rnum">${i}</span>` : ''}${artE(e)}<span class="rt"><b>${esc(e.t)}</b><span>${sub}</span></span>${right}</li>`;
+    const score = x => `<span class="score">${fmtNote(x)}</span>`;
+    if (amiTab === 'disc') {
+      h += `<p class="kbd">Ses séries que tu n'as pas encore rangées, de sa préférée à la moins aimée. Dis si tu les as vues : les « vue » partent en duels dans ton propre classement.</p>`;
+      const D0 = [...C.disc].sort((a, b) => b.nt - a.nt);
+      h += D0.length ? `<ol class="alist">${D0.slice(0, 60).map(e => row(e, null, `<span class="abtn"><button class="btn sm no" data-x="no" data-k="${esc(String(e.k))}">Pas vue</button><button class="btn sm yes" data-x="yes" data-k="${esc(String(e.k))}">Vue</button></span>`,
+        `${esc(P.n)} : ${e.L ? `${fr(e.r + 1)}${e.L === 'a' ? ' animé' : ''} · ${fmtNote(e.nt)}` : 'pas finie'} · <button class="lnk" data-x="drop" data-k="${esc(String(e.k))}">pas finie</button>`)).join('')}</ol>${D0.length > 60 ? `<p class="kbd">Encore ${D0.length - 60} après celles-ci.</p>` : ''}`
+        : `<div class="empty"><b>Tout est rangé</b><span>Tu as déjà dit vue ou pas vue pour toutes ses séries.</span></div>`;
+      const top = C.notSeen.filter(e => e.L).sort((a, b) => b.nt - a.nt).slice(0, 12);
+      if (top.length) h += `<div class="panel"><h3>Ses préférées que tu n'as pas vues</h3><p class="kbd">Des idées de séries à regarder.</p><ol class="alist">${top.map(e => row(e, null, score(e.nt), `${esc(P.n)} : ${fr(e.r + 1)} ${e.L === 'a' ? 'animé' : 'série'}${e.c && e.c.net ? ' · ' + esc(e.c.net) : ''}`)).join('')}</ol></div>`;
+    } else if (amiTab === 'rank') {
+      h += `<div class="seg lsw" role="group" style="align-self:flex-start">${['s', 'a'].map(L => `<button data-al="${L}" aria-pressed="${curList === L}">${LISTS[L].n}<span class="cnt">${(P[L] || []).length}</span></button>`).join('')}</div>`;
+      const E = C.E.filter(e => e.L === curList);
+      h += `<ol class="alist">${E.map(e => row(e, e.r + 1, score(e.nt), e.my ? myState(e.my) : e.no ? 'toi : pas vue' : 'pas encore rangée chez toi')).join('') || '<li class="muted">Rien ici.</li>'}</ol>`;
+    } else if (amiTab === 'common') {
+      h += `<p class="kbd">Dans son ordre. À droite, sa note ; sous le titre, ta place et ta note.</p>`;
+      h += `<ol class="alist">${C.common.sort((a, b) => (a.L === 'a') - (b.L === 'a') || a.r - b.r).map(e => row(e, e.r + 1, score(e.nt), myState(e.my))).join('') || '<li class="muted">Aucune série classée en commun pour l\'instant.</li>'}</ol>`;
+    } else {
+      h += `<p class="kbd">Tes séries classées qui ne sont pas dans sa liste. Il ou elle ne les a peut-être pas vues… ou pas encore rangées.</p>`;
+      h += `<ol class="alist">${C.mine.map(it => `<li class="arow"><span class="rnum">${FIT.rank[it.id] + 1}</span>${art(it, 'sm')}<span class="rt"><b>${esc(it.t)}</b><span>${LISTS[listOf(it.id)].one}</span></span>${score(noteOf(it.id))}</li>`).join('') || '<li class="muted">Rien.</li>'}</ol>`;
+    }
+    h += `<div class="row"><button class="btn ghost sm" id="ami-rm">Retirer le classement de ${esc(P.n)}</button></div>`;
+  }
+  const base = shareBase();
+  h += `<div class="panel"><h3>Partager ton classement</h3>
+    <p class="muted small">Le lien contient une photo de ton classement (pas tes duels). La personne qui l'ouvre voit ton classement à côté du sien, et fait le sien de son côté. Renvoie un lien quand ton classement a bougé.</p>
+    <div class="field"><label for="me-n">Ton prénom, tel que tes amis le verront</label><input id="me-n" value="${esc(S.me ? S.me.n : '')}" placeholder="Prénom" maxlength="40"></div>
+    <div class="row"><button class="btn primary" id="sh-go">Créer mon lien</button><span class="kbd" id="sh-msg"></span></div>
+    <textarea id="sh-out" readonly hidden></textarea>
+    <div class="row" id="sh-acts" hidden><button class="btn sm" id="sh-cp">Copier</button><button class="btn sm" id="sh-mail">Envoyer par mail</button>${navigator.share ? '<button class="btn sm" id="sh-share">Partager…</button>' : ''}</div>
+    ${base ? '' : '<p class="kbd">Ici le lien n\'est pas encore relié au site : copie le code, ton ami pourra le coller dans « Ajouter le classement d\'un ami ».</p>'}</div>
+    <div class="panel"><h3>Ajouter le classement d'un ami</h3><p class="muted small">Ouvre le lien reçu, ou colle-le ici.</p>
+    <textarea id="ami-in" placeholder="Colle le lien ou le code"></textarea><div class="row"><button class="btn" id="ami-go">Ajouter</button><span class="kbd" id="ami-msg"></span></div></div>`;
+  el.innerHTML = h; bindAmis(el);
+}
+function bindAmis(el){
+  el.querySelectorAll('[data-ami]').forEach(b => b.onclick = () => { amiSel = b.dataset.ami; try { localStorage.setItem('palmares:amisel', amiSel); } catch(e) {} renderAmis(); });
+  el.querySelectorAll('[data-at]').forEach(b => b.onclick = () => { amiTab = b.dataset.at; try { localStorage.setItem('palmares:amitab', amiTab); } catch(e) {} renderAmis(); });
+  el.querySelectorAll('[data-al]').forEach(b => b.onclick = () => setList(b.dataset.al));
+  el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openSheet(b.dataset.open));
+  el.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { const P = friends().find(x => x.id === amiSel); if (!P) return;
+    const e = entries(P).find(x => String(x.k) === b.dataset.k); if (!e) return; pushUndo();
+    if (b.dataset.x === 'no') S.skipped.push(e.c ? '#' + e.c.tm : norm(e.t));
+    else { const id = addItem(e.t, e.y, {cat: e.c || null, dropped: b.dataset.x === 'drop'}); if (id && !e.c) S.items[id].nm = true;
+      if (id && e.L === 'a' && !(e.c && e.c.f.includes('j'))) S.items[id].an = true; }
+    save(); render(); });
+  const rm = $('#ami-rm'); if (rm) rm.onclick = () => { if (rm.dataset.c !== '1') { rm.dataset.c = '1'; rm.textContent = 'Confirmer'; return; }
+    pushUndo(); if (S.amis) delete S.amis[amiSel]; S.amisOff = [...new Set([...(S.amisOff || []), amiSel])]; amiSel = null; save(); render(); };
+  const nm = $('#me-n'); nm.onchange = () => { if (!S.me) myProfile(); S.me.n = nm.value.trim(); save(); };
+  $('#sh-go').onclick = async () => { if (!S.me) myProfile(); S.me.n = $('#me-n').value.trim(); if (!S.me.n) { $('#sh-msg').textContent = 'Indique ton prénom.'; $('#me-n').focus(); return; }
+    if (!Object.keys(FIT.rank).length) { $('#sh-msg').textContent = 'Classe d\'abord quelques séries.'; return; }
+    save(); const code = await encProfile(myProfile()), base = shareBase(), link = base ? base + '#ami=' + code : code;
+    const out = $('#sh-out'); out.value = link; out.hidden = false; $('#sh-acts').hidden = false; $('#sh-msg').textContent = base ? `Lien prêt (${Object.keys(FIT.rank).length} séries).` : 'Code prêt.';
+    $('#sh-cp').onclick = () => copy(link, 'Lien copié');
+    $('#sh-mail').onclick = () => { location.href = 'mailto:?subject=' + encodeURIComponent('Mon palmarès de séries') + '&body=' + encodeURIComponent(`Voilà mon classement de séries. Ouvre ce lien pour le voir et faire le tien :\n\n${link}\n\nRenvoie-moi ton lien (onglet Amis) pour qu'on compare.`); };
+    const sh = $('#sh-share'); if (sh) sh.onclick = () => navigator.share({title: 'Mon palmarès de séries', text: 'Mon classement de séries, fais le tien et renvoie-moi ton lien :', url: base ? link : undefined}).catch(() => {}); };
+  $('#ami-go').onclick = async () => { const msg = $('#ami-msg');
+    try { const P = await decProfile($('#ami-in').value); if (S.me && P.id === S.me.id) { msg.textContent = 'C\'est ton propre classement.'; return; }
+      pushUndo(); addFriend(P); render(); toast(`Classement de ${P.n} ajouté`); }
+    catch(e) { msg.textContent = 'Ce lien ou ce code n\'est pas valide (copié en entier ?).'; } };
+}
+/* Dans la fiche d'une série : la place qu'elle a chez chaque ami */
+function amisLine(it){ const out = [];
+  for (const P of friends()) { const e = entries(P).find(x => x.my === it.id); if (e) out.push(e.drop ? `${esc(P.n)} : pas finie` : `${esc(P.n)} : ${fr(e.r + 1)} · ${fmtNote(e.nt)}`); }
+  return out.length ? `<span class="gchips">${out.map(x => `<span>${x}</span>`).join('')}</span>` : ''; }
+function amisHint(){ const el = $('#amis-hint'); if (!el) return; const F = friends();
+  el.innerHTML = F.length && Object.keys(S.items).length < 15 ? `<div class="result" style="grid-template-columns:1fr auto"><span>Le plus rapide pour commencer : passe en revue les séries de <b>${esc(F[0].n)}</b>.</span><button class="btn primary sm" id="hint-go">Y aller</button></div>` : '';
+  const b = $('#hint-go'); if (b) b.onclick = () => { amiSel = F[0].id; amiTab = 'disc'; go('amis'); }; }
+async function initAmis(){
+  try { const r = await fetch('amis.json', {cache: 'no-cache'}); if (r.ok) for (const P of await r.json()) if (P && P.id) BAKED[P.id] = P; } catch(e) {}
+  if (location.hash.includes('ami=')) { try { const P = await decProfile(location.hash); if (!(S.me && P.id === S.me.id)) { addFriend(P); amiTab = 'disc'; view = 'amis'; toast(`Classement de ${P.n} ajouté`); } } catch(e) { toast('Lien de classement illisible'); }
+    try { history.replaceState(null, '', location.pathname + location.search); } catch(e) {} }
+  let stored = null; try { stored = localStorage.getItem('palmares:view'); } catch(e) {}
+  if (!stored && !Object.keys(S.items).length && friends().length) view = 'amis';
+  render();
+}
+
+/* ================= Vue Classement ================= */
+let rankMode = 'list', rankFilter = '', movRef = 'visit';
+try { rankMode = localStorage.getItem('palmares:rank') || 'list'; movRef = localStorage.getItem('palmares:movref') || 'visit'; } catch(e) {}
+/* fiabilité = largeur de la place possible */
+function conf(id){ const w = widthOf(id), L = listOf(id), i = FIT.rank[id], n = ordOf(L).length;
+  const near = (i === 0 || proven(L, i - 1, i)) && (i === n - 1 || proven(L, i, i + 1));   // départagée de ses deux voisines
+  const k = w === 0 ? 3 : near || w <= 4 ? 2 : 1;
+  return `<span class="conf" title="${['', 'à confirmer', 'presque sûre', 'prouvée'][k]}">${[1,2,3].map(i => `<i class="${i <= k ? 'on' : ''}"></i>`).join('')}</span>`; }
+/* Mouvements : on ne compare que les séries présentes aux deux dates, pour que l'ajout d'une nouvelle série ne compte pas comme un recul */
+function relMoves(curOrd, refRank){
+  const common = curOrd.filter(id => refRank[id] != null);
+  const rp = new Map([...common].sort((a, b) => refRank[a] - refRank[b]).map((id, i) => [id, i]));
+  const mv = new Map(); common.forEach((id, i) => mv.set(id, rp.get(id) - i)); return mv;
+}
+function refSnap(days){ const lim = dayKey(Date.now() - days * 864e5); let best = null;
+  for (const e of HIST) if (e.day <= lim) best = e;
+  return best || HIST.find(e => e.day < dayKey()) || null; }
+function reference(L){
+  if (movRef === 'visit') return Object.keys(snapRanks).length ? {rank: snapRanks, label: 'depuis ta dernière visite'} : null;
+  const e = refSnap(+movRef); if (!e) return null; const m = hdec(e, L);
+  return {rank: Object.fromEntries(Object.entries(m).map(([id, v]) => [id, v[0]])), label: 'depuis le ' + fmtDay(e.day)};
+}
+function renderRank(){
+  const el = $('#v-rank'); const L = curList, o = ordOf(L); const qn = S.queue.length;
+  const ref = reference(L), mv = ref ? relMoves(o, ref.rank) : new Map();
+  let h = `<div class="row between" style="align-items:flex-end"><div><p class="eyebrow">Résultat</p><h2>Ton palmarès</h2></div>${listSwitch()}</div>`;
+  if (qn) h += `<div class="result" style="grid-template-columns:1fr auto"><span><b>${qn}</b> en attente de classement</span><button class="btn primary sm" id="go-duel">Classer</button></div>`;
+  if (!o.length) { el.innerHTML = h + `<div class="empty"><b>Rien de classé dans ${LISTS[L].n.toLowerCase()} pour l'instant</b><span>${L === 'a' ? 'Les animés japonais du catalogue arrivent ici automatiquement. Pour une autre série, ouvre sa fiche et choisis « Animé ».' : 'Chaque série placée par les duels apparaît ici, avec sa place et sa note.'}</span></div>` + tools(); bindRank(); return; }
+  const nU = o.filter(id => widthOf(id) > 0).length;
+  h += `<div class="row"><button class="btn" id="ref" ${o.length < 2 ? 'disabled' : ''}>Affiner</button><span class="kbd">${nU ? `${nU} place${nU > 1 ? 's' : ''} sur ${o.length} pas encore prouvée${nU > 1 ? 's' : ''}` : 'Toutes les places sont prouvées par tes duels'}</span></div>`;
+  if (o.length >= 3 && !rankFilter) h += `<div class="podium">${[1,0,2].map(r => { const it = S.items[o[r]]; return `<button data-open="${it.id}" class="p${r+1}"><span class="pr">${fr(r+1)}</span>${art(it, 'big')}<span class="pt">${esc(it.t)}</span></button>`; }).join('')}</div>`;
+  if (o.length > 12) h += `<input type="search" id="rf" placeholder="Filtrer le classement" value="${esc(rankFilter)}">`;
+  const f = norm(rankFilter); const vis = o.map((id, i) => [id, i]).filter(([id]) => !f || norm(S.items[id].t).includes(f));
+  const mvTag = id => { if (!ref) return ''; const d = mv.get(id); if (d == null) return '<small class="mv-up">new</small>'; return d ? `<small class="${d > 0 ? 'mv-up' : 'mv-dn'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</small>` : ''; };
+  if (rankMode === 'wall') h += `<div class="wall">${vis.map(([id, i]) => `<button data-open="${id}">${art(S.items[id], 'sm')}<span class="wr">${i + 1}</span></button>`).join('')}</div>`;
+  else h += `<ol class="ranklist">${vis.map(([id, i]) => { const it = S.items[id];
+      return `<li class="ritem"><button data-open="${id}"><span class="rnum">${i + 1}${mvTag(id)}</span>${art(it, 'sm')}
+        <span class="rt"><b>${esc(it.t)}</b><span><i class="tdot" style="background:${TINFO[it.tier].c}"></i>${esc(metaOf(it) || TINFO[it.tier].n)} ${conf(id)}</span></span><span class="score">${fmtNote(noteOf(id))}</span></button></li>`; }).join('') || '<li class="muted" style="padding:12px 2px">Aucun résultat.</li>'}</ol>`;
+  h += `<div class="row between"><div class="seg" role="group" aria-label="Affichage"><button data-rm="list" aria-pressed="${rankMode === 'list'}">Liste</button><button data-rm="wall" aria-pressed="${rankMode === 'wall'}">Mur</button></div></div>`;
+  h += evolution(L, ref, mv);
+  if (S.dropped.length) h += `<div class="panel"><h3>Pas finies · ${S.dropped.length}</h3><p class="muted small">Hors classement. Touche une série pour la classer quand même.</p><div class="droplist">${S.dropped.map(id => `<button data-drop="${id}">${esc(S.items[id].t)}</button>`).join('')}</div></div>`;
+  el.innerHTML = h + explain() + tools(); bindRank(); bindChart(el);
+}
+/* Panneau Évolution : mouvements depuis une date + stabilité jour après jour */
+function evolution(L, ref, mv){
+  const seg = `<div class="seg" role="group" aria-label="Comparer avec">${[['visit', 'Dernière visite'], ['7', '7 jours'], ['30', '30 jours']].map(([k, n]) => `<button data-mr="${k}" aria-pressed="${movRef === k}">${n}</button>`).join('')}</div>`;
+  let body = '';
+  if (!ref) body = `<p class="muted small">${movRef === 'visit' ? 'Les flèches apparaîtront à ta prochaine visite.' : 'Pas encore de photo assez ancienne.'}</p>`;
+  else {
+    const arr = [...mv.entries()], moved = arr.filter(([, d]) => d), big = arr.filter(([, d]) => Math.abs(d) >= 5).length;
+    const mean = arr.length ? arr.reduce((a, [, d]) => a + Math.abs(d), 0) / arr.length : 0;
+    const top = (sgn) => moved.filter(([, d]) => d * sgn > 0).sort((x, y) => Math.abs(y[1]) - Math.abs(x[1])).slice(0, 3)
+      .map(([id, d]) => `<button class="mvchip" data-open="${id}"><span class="${d > 0 ? 'mv-up' : 'mv-dn'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span> ${esc(S.items[id].t)}</button>`).join('');
+    body = `<p class="small">${ref.label[0].toUpperCase() + ref.label.slice(1)} : <b>${moved.length}</b> sur ${arr.length} ont bougé, de <b>${fmtNote(mean)}</b> place en moyenne${big ? `, dont ${big} de 5 places ou plus` : ''}.</p>
+      ${moved.length ? `<div class="mvrow">${top(1)}${top(-1)}</div>` : ''}`;
+  }
+  // stabilité : mouvement moyen d'une photo à la suivante
+  const pts = []; for (let k = 1; k < HIST.length; k++) { const A = hdec(HIST[k - 1], L), B = hdec(HIST[k], L);
+    const ordB = Object.keys(B).sort((x, y) => B[x][0] - B[y][0]); const rA = Object.fromEntries(Object.entries(A).map(([id, v]) => [id, v[0]]));
+    const m = relMoves(ordB, rA); if (m.size < 2) continue; let s = 0; for (const d of m.values()) s += Math.abs(d); pts.push({day: HIST[k].day, v: s / m.size, n: m.size}); }
+  const first = HIST.find(e => e[L]);
+  body += pts.length >= 2 ? `<div><p class="kbd" style="margin-bottom:6px">Mouvement moyen d'un jour à l'autre (en places). Plus les barres baissent, plus ton classement est stable.</p>${barChart(pts.slice(-30))}</div>`
+    : `<p class="kbd">Une photo du classement est enregistrée chaque jour où tu votes${first ? `, depuis le ${fmtDay(first.day)}` : ''}. Après quelques jours, tu verras ici s'il se stabilise. Chaque fiche montre aussi la courbe de la série.</p>`;
+  return `<div class="panel"><div class="row between"><h3>Évolution</h3>${seg}</div>${body}</div>`;
+}
+/* Petits graphiques SVG : une seule série, couleur d'accent, survol = infobulle */
+function barChart(pts){
+  const W = 320, H = 96, pad = 18, n = pts.length, max = Math.max(1, ...pts.map(p => p.v));
+  const bw = (W - 8) / n, gap = Math.min(2, bw * .25);
+  const bars = pts.map((p, i) => { const h = Math.max(2, (p.v / max) * (H - pad - 6)), x = 4 + i * bw, y = H - pad - h;
+    const tip = `${fmtDay(p.day)} : ${fmtNote(p.v)} place${p.v >= 2 ? 's' : ''} en moyenne (${p.n} ${LISTS[curList].pl})`;
+    return `<rect class="bar" x="${x + gap / 2}" y="${y}" width="${Math.max(1, bw - gap)}" height="${h}" rx="${Math.min(4, (bw - gap) / 2)}"/>
+      <rect class="hit" x="${x}" y="0" width="${bw}" height="${H - pad}" data-tip="${esc(tip)}"/>`; }).join('');
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mouvement moyen par jour">
+    <line class="base" x1="0" x2="${W}" y1="${H - pad}" y2="${H - pad}"/>${bars}
+    <text x="4" y="${H - 4}">${fmtDay(pts[0].day)}</text><text x="${W - 4}" y="${H - 4}" text-anchor="end">${fmtDay(pts[n - 1].day)}</text>
+    <text x="${W - 4}" y="10" text-anchor="end">max ${fmtNote(max)}</text></svg><div class="tip" hidden></div></div>`;
+}
+function lineChart(pts, total){
+  const W = 320, H = 110, pl = 30, pr = 10, pt = 10, pb = 18, n = pts.length;
+  const lo = Math.min(...pts.map(p => p.r)), hi = Math.max(...pts.map(p => p.r)), span = Math.max(4, hi - lo);
+  const top = Math.max(1, lo - Math.ceil(span * .15)), bot = top + span + Math.ceil(span * .3);
+  const X = i => pl + (n === 1 ? (W - pl - pr) / 2 : i * (W - pl - pr) / (n - 1)), Y = r => pt + (r - top) / (bot - top) * (H - pt - pb);
+  const path = pts.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.r).toFixed(1)}`).join('');
+  const dots = pts.map((p, i) => `<circle class="pt" cx="${X(i)}" cy="${Y(p.r)}" r="4"/>
+    <rect class="hit" x="${X(i) - Math.max(8, (W - pl - pr) / (2 * Math.max(1, n - 1)))}" y="0" width="${Math.max(16, (W - pl - pr) / Math.max(1, n - 1))}" height="${H - pb}" data-tip="${esc(`${p.label} : ${fr(p.r)}${p.of ? ` sur ${p.of}` : ''} · ${fmtNote(p.nt)}`)}"/>`).join('');
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution de la place">
+    <line class="grid" x1="${pl}" x2="${W - pr}" y1="${Y(top)}" y2="${Y(top)}"/><line class="grid" x1="${pl}" x2="${W - pr}" y1="${Y(bot)}" y2="${Y(bot)}"/>
+    <text x="${pl - 6}" y="${Y(top) + 4}" text-anchor="end">${top}e</text><text x="${pl - 6}" y="${Y(bot) + 4}" text-anchor="end">${bot}e</text>
+    <path class="line" d="${path}"/>${dots}
+    <text x="${pl}" y="${H - 4}">${pts[0].label}</text><text x="${W - pr}" y="${H - 4}" text-anchor="end">${pts[n - 1].label}</text></svg><div class="tip" hidden></div></div>`;
+}
+function bindChart(root){
+  root.querySelectorAll('.chart').forEach(c => { const tip = c.querySelector('.tip');
+    c.querySelectorAll('[data-tip]').forEach(r => {
+      const show = () => { tip.textContent = r.dataset.tip; tip.hidden = false; const cb = c.getBoundingClientRect(), rb = r.getBoundingClientRect();
+        tip.style.left = Math.min(Math.max(0, rb.left - cb.left + rb.width / 2 - tip.offsetWidth / 2), cb.width - tip.offsetWidth) + 'px'; r.classList.add('on'); };
+      const hide = () => { tip.hidden = true; r.classList.remove('on'); };
+      r.addEventListener('pointerenter', show); r.addEventListener('pointerleave', hide); r.addEventListener('pointerdown', show); }); });
+}
+function explain(){ return `<div class="panel"><details><summary>Comment c'est calculé</summary><div class="explain" style="margin-top:12px">
+  <p><b>Deux classements.</b> Les séries et les animés sont classés séparément et ne se rencontrent jamais en duel. Les animés japonais du catalogue y vont d'office ; pour toute autre série, la fiche permet de changer.</p>
+  <p><b>Placement.</b> Une nouvelle série est insérée par dichotomie : chaque duel coupe en deux la zone où elle peut être. 4 à 8 duels suffisent, même parmi 300 séries.</p>
+  <p><b>Tout reste mobile.</b> Chaque duel est gardé. Si une réponse contredit l'ordre actuel, la série est déplacée vers la place qui contredit le moins de duels. Pour une même paire, seul ton choix le plus récent compte.</p>
+  <p><b>Place prouvée ou non.</b> Pour chaque série, on calcule ce que tes duels prouvent vraiment, directement ou par enchaînement (A bat B, B bat C, donc A est devant C). Une série peut être « entre la 12e et la 19e » : c'est sa place possible. Les points ●●● le résument, et l'affinage s'attaque d'abord aux places les plus larges. Un duel de contrôle s'intercale aussi entre deux placements.</p>
+  <p><b>La note</b> sur 10 mélange ta place (la moitié) et une force lissée qui tient compte du palier de départ et des égalités (« impossible de choisir » rapproche les deux notes). Les duels ne disent que « laquelle est mieux », pas « de combien » : le palier et les égalités sont les seules mesures d'écart.</p>
+  <p><b>L'historique.</b> Une photo de chaque classement (places et notes) est gardée chaque jour où tu votes, pour suivre la stabilité.</p>
+  ${S.fromV1 ? `<p>Ton classement de la première version a été repris tel quel, sous forme de duels « hérités » entre voisines. Ils comptent à moitié, cèdent face à tout nouveau duel et ne prouvent aucune place : ces séries seront proposées en affinage.</p>` : ''}
+</div></details></div>`; }
+function tools(){ return `<div class="panel"><details id="tools"><summary>Sauvegarde et export</summary>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+    <div class="row"><button class="btn sm" id="cp-list">Copier les classements (texte)</button><button class="btn sm" id="cp-json">Copier la sauvegarde</button></div>
+    <textarea id="imp" placeholder="Colle ici une sauvegarde (ancienne ou nouvelle version) pour la restaurer"></textarea>
+    <div class="row"><button class="btn sm" id="imp-go">Restaurer cette sauvegarde</button><span class="kbd" id="imp-msg"></span></div>
+    <p class="kbd">Ta toute première version (avant les mises à jour) reste aussi conservée à part, intacte.</p>
+  </div></details></div>`; }
+let toolsOpen = false;
+function bindRank(){
+  const el = $('#v-rank'); bindListSwitch(el);
+  el.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { rankMode = b.dataset.rm; try { localStorage.setItem('palmares:rank', rankMode); } catch(e) {} renderRank(); });
+  el.querySelectorAll('[data-mr]').forEach(b => b.onclick = () => { movRef = b.dataset.mr; try { localStorage.setItem('palmares:movref', movRef); } catch(e) {} renderRank(); });
+  const gd = $('#go-duel'); if (gd) gd.onclick = () => go('duel');
+  const rf = $('#ref'); if (rf) rf.onclick = () => startRefine(curList);
+  const fl = $('#rf'); if (fl) fl.oninput = () => { rankFilter = fl.value; const pos = fl.selectionStart; renderRank(); const n = $('#rf'); n.focus(); n.setSelectionRange(pos, pos); };
+  el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openSheet(b.dataset.open));
+  el.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => { pushUndo(); const id = b.dataset.drop; S.dropped = S.dropped.filter(x => x !== id); S.queue.splice(S.pending ? 1 : 0, 0, id); save(); go('duel'); });
+  const tl = $('#tools'); if (tl) { tl.open = toolsOpen; tl.ontoggle = () => toolsOpen = tl.open; }
+  $('#cp-list').onclick = () => copy(['s', 'a'].filter(L => ordOf(L).length).map(L => LISTS[L].n.toUpperCase() + '\n' + ordOf(L).map((id, i) => { const it = S.items[id]; return `${i + 1}. ${it.t}${it.y ? ` (${it.y})` : ''} · ${fmtNote(noteOf(id))}`; }).join('\n')).join('\n\n'), 'Classements copiés');
+  $('#cp-json').onclick = () => copy(JSON.stringify({format: 'palmares-v2', s: S, d: D.map(enc), h: HIST}), 'Sauvegarde copiée, garde-la dans une note');
+  const ig = $('#imp-go'); ig.onclick = () => { const msg = $('#imp-msg'); let m, hist = null;
+    try { const o = JSON.parse($('#imp').value); if (o && o.format === 'palmares-v2') { m = clean(o.s, (o.d || []).map(dec)); hist = Array.isArray(o.h) ? o.h : null; } else if (o && o.items && o.tiers) m = (x => clean(x.s, x.d))(fromV1(o)); else throw 0; }
+    catch(e) { msg.textContent = 'Ce texte n\'est pas une sauvegarde valide.'; return; }
+    if (ig.dataset.c !== '1') { ig.dataset.c = '1'; ig.textContent = 'Confirmer : remplacer tout'; msg.textContent = `${Object.keys(m.s.items).length} séries dans cette sauvegarde. Tu pourras annuler.`; return; }
+    pushUndo(); S = m.s; D = m.d; allDirty = true;
+    if (hist) for (const e of hist) if (e && e.day && !HIST.some(h => h.day === e.day)) { HIST.push(e); histDirty.add(e.day); }
+    HIST.sort((x, y) => x.day < y.day ? -1 : 1); histLocalSave();
+    matchItems(); refit(); save(); render(); toast('Sauvegarde restaurée'); };
+}
+function copy(text, ok){ const fallback = () => { const t = $('#imp'); t.value = text; t.focus(); t.select(); toast('Copie bloquée : texte sélectionné dans le champ'); };
+  try { navigator.clipboard.writeText(text).then(() => toast(ok), fallback); } catch(e) { fallback(); } }
+
+/* ================= Fiche d'une série ================= */
+let sheetId = null, sheetDel = false, sheetPick = false, assetsNS = null;
+async function initAssets(){ try { assetsNS = await claude.use('assets'); } catch(e) {} }
+function openSheet(id){ sheetId = id; sheetDel = false; sheetPick = false; $('#sheet').hidden = false; renderSheet(); }
+function closeSheet(){ sheetId = null; $('#sheet').hidden = true; render(); }
+$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetId) closeSheet(); });
+function itemHistory(id, L){
+  const pts = []; for (const e of HIST) { const m = hdec(e, L); if (m[id]) pts.push({label: fmtDay(e.day), r: m[id][0] + 1, nt: m[id][1], of: Object.keys(m).length}); }
+  return pts;
+}
+function renderSheet(){
+  const it = S.items[sheetId]; if (!it) { closeSheet(); return; }
+  const L = listOf(it.id), o = ordOf(L), r = FIT.rank[it.id]; const ranked = r != null;
+  const mine = D.map((d, i) => [d, i]).filter(([d]) => d.a === it.id || d.b === it.id).reverse();
+  const w = mine.filter(([d]) => d.r !== 'd' && d.a === it.id).length, l = mine.filter(([d]) => d.r !== 'd' && d.b === it.id).length, dr = mine.length - w - l;
+  const dt = t => t ? new Date(t).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'}) : 'v1';
+  const hist = mine.slice(0, 60).map(([d, i]) => { const other = S.items[d.a === it.id ? d.b : d.a]; const k = d.r === 'd' ? 'd' : d.r === 'h' ? 'h' : d.a === it.id ? 'w' : 'l';
+    const off = listOf(other.id) !== L ? ' <span class="muted small">(autre classement, ignoré)</span>' : '';
+    return `<li><span class="res ${k}">${{w:'GAGNÉ',l:'PERDU',d:'ÉGALITÉ',h:'HÉRITÉ'}[k]}</span><span>${k === 'h' ? (d.a === it.id ? 'devant ' : 'derrière ') : 'vs '}${esc(other.t)} <span class="muted small">· ${dt(d.t)}</span>${off}</span><button class="x" data-dd="${i}" aria-label="Supprimer ce duel">×</button></li>`; }).join('');
+  const lo = FIT.lo[it.id], hi = FIT.hi[it.id];
+  const nr = ranked && hi > lo ? ` · entre ${fmtNote(noteOf(o[hi]))} et ${fmtNote(noteOf(o[lo]))}` : '';
+  const pts = ranked ? itemHistory(it.id, L) : [];
+  $('#sheet-p').innerHTML = `
+    <div class="dhead">${art(it, 'big')}<div>
+      <h2>${esc(it.t)}</h2>${ficheOf(it)}${amisLine(it)}
+      ${ranked ? `<span class="big-note">${fmtNote(noteOf(it.id))}<span class="muted" style="font-size:16px">/10</span></span>
+        <span class="small">${fr(r + 1)} sur ${o.length} ${LISTS[L].pl} ${conf(it.id)}</span><span class="kbd">${placeRange(it.id)}${nr}</span>` : `<span class="small muted">${S.dropped.includes(it.id) ? 'Pas finie, hors classement' : 'En attente de classement'}</span>`}
+    </div></div>
+    <div class="field"><label>Classement</label><div class="tiersel">${['s', 'a'].map(k => `<button data-mv="${k}" aria-pressed="${L === k}">${LISTS[k].n}</button>`).join('')}</div></div>
+    ${ranked ? `<div class="field"><label>Palier de départ</label><div class="tiersel">${[...TIERS, 'auto'].map(t => `<button data-tier="${t}" aria-pressed="${it.tier === t}">${TINFO[t].n}</button>`).join('')}</div></div>
+    <div class="row"><button class="btn primary sm" id="s-ref">Affiner sa place (5 duels)</button><button class="btn sm" id="s-up" ${r === 0 ? 'disabled' : ''}>▲ Préférée à la ${r > 0 ? fr(r) : ''}</button><button class="btn sm" id="s-dn" ${r === o.length - 1 ? 'disabled' : ''}>▼ Moins que la ${fr(r + 2)}</button></div>` : ''}
+    ${ranked ? `<div><h3>Évolution</h3>${pts.length >= 2 ? lineChart(pts.slice(-60), o.length) : `<p class="kbd">La courbe de sa place apparaîtra quand le classement aura été photographié sur au moins deux jours.</p>`}</div>` : ''}
+    <div class="row"><button class="btn sm" id="s-pic">Changer l'affiche</button>${ranked ? '<button class="btn sm" id="s-redo">Re-classer de zéro</button>' : ''}<button class="btn sm ${sheetDel ? 'no' : ''}" id="s-del">${sheetDel ? 'Confirmer le retrait' : 'Retirer'}</button><button class="btn ghost sm" id="s-close">Fermer</button></div>
+    ${sheetPick ? `<div class="panel"><div class="field"><label for="s-q">Trouver la bonne affiche dans le catalogue</label><input type="search" id="s-q" placeholder="Titre" value="${esc(it.t)}"></div><div class="hits" id="s-hits"></div>
+      <div class="row">${assetsNS ? '<button class="btn sm" id="s-up-img">Importer une image</button>' : ''}<button class="btn ghost sm" id="s-none">Sans affiche</button></div><span class="kbd" id="s-msg"></span></div>` : ''}
+    <div><h3>Historique · ${w} gagné${w>1?'s':''}, ${l} perdu${l>1?'s':''}${dr ? `, ${dr} autre${dr>1?'s':''}` : ''}</h3>
+      <p class="kbd">Une erreur de clic ? Supprime le duel, le classement se recalcule.</p>
+      <ul class="hist">${hist || '<li class="muted"><span></span><span>Aucun duel pour l\'instant.</span></li>'}</ul></div>`;
+  const P = $('#sheet-p'); bindChart(P);
+  P.querySelectorAll('[data-tier]').forEach(b => b.onclick = () => { pushUndo(); it.tier = b.dataset.tier; refit(); save(); render(); });
+  P.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { const to = b.dataset.mv; if (to === L) return; pushUndo();
+    it.an = to === 'a';
+    if (it.tier) { delete it.tier; S.queue = S.queue.filter(x => x !== it.id); S.queue.splice(S.pending ? 1 : 0, 0, it.id); toast(`Déplacée vers ${LISTS[to].n}, à placer dans Duels`); }
+    else toast(`Elle sera classée dans ${LISTS[to].n}`);
+    if (S.pending && S.pending.id === it.id) S.pending.tier = null;
+    refit(); save(); render(); });
+  P.querySelectorAll('[data-dd]').forEach(b => b.onclick = () => { pushUndo(); D.splice(+b.dataset.dd, 1); allDirty = true; repair(); refit(); save(); render(); toast('Duel supprimé'); });
+  const on = (s, f) => { const e = P.querySelector(s); if (e) e.onclick = f; };
+  on('#s-close', closeSheet);
+  on('#s-ref', () => { closeSheet(); startRefine(L, it.id); });
+  on('#s-up', () => manual(it.id, -1)); on('#s-dn', () => manual(it.id, 1));
+  on('#s-redo', () => { pushUndo(); D = D.filter(d => d.a !== it.id && d.b !== it.id); allDirty = true; delete it.tier; S.queue.splice(S.pending ? 1 : 0, 0, it.id); refit(); save(); closeSheet(); go('duel'); });
+  on('#s-del', () => { if (!sheetDel) { sheetDel = true; renderSheet(); return; } pushUndo(); const t = it.t; removeItem(it.id); refit(); save(); closeSheet(); toast(`« ${t} » retirée`); });
+  on('#s-pic', () => { sheetPick = !sheetPick; renderSheet(); if (sheetPick) sheetHits(); });
+  on('#s-none', () => { pushUndo(); delete it.tm; delete it.pa; it.nm = it.nmx = true; save(); render(); });
+  on('#s-up-img', () => $('#file').click());
+  const sq = $('#s-q'); if (sq) { sq.oninput = sheetHits; sheetHits(); }
+}
+function sheetHits(){ const box = $('#s-hits'); if (!box) return; const k = norm($('#s-q').value); if (k.length < 2) { box.innerHTML = ''; return; }
+  const hits = CAT.filter(c => c.keys.includes(k)).slice(0, 6);
+  box.innerHTML = hits.map(c => `<button class="hit" data-tm="${c.tm}">${art(c, 'sm')}<span><b>${esc(c.n)}</b><span class="y">${[c.y, c.net].filter(Boolean).join(' · ')}</span></span><span class="tg">Choisir</span></button>`).join('') || '<p class="kbd" style="padding:10px">Rien dans le catalogue.</p>';
+  box.querySelectorAll('[data-tm]').forEach(b => b.onclick = () => { const it = S.items[sheetId]; pushUndo(); it.tm = +b.dataset.tm; delete it.pa; delete it.nm; delete it.nmx; sheetPick = false; save(); render(); toast('Affiche mise à jour'); }); }
+$('#file').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f || !assetsNS || !sheetId) return; const msg = $('#s-msg'); if (msg) msg.textContent = 'Envoi…';
+  try { const blob = await shrink(f); const r = await assetsNS.upload(blob, {type: 'image/jpeg'}); const it = S.items[sheetId]; pushUndo(); it.pa = r.id; delete it.nm; delete it.nmx; sheetPick = false; save(); render(); toast('Affiche importée'); }
+  catch(err) { if (msg) msg.textContent = {too_large:'Image trop lourde.', unsupported_type:'Format non pris en charge.', quota_or_state:'Stockage plein.'}[err && err.code] || 'L\'envoi a échoué.'; } };
+function shrink(file){ return new Promise((res, rej) => { const img = new Image(); img.onload = () => { const W = 420, H = 600, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const sc = Math.max(W / img.width, H / img.height); const w = img.width * sc, h = img.height * sc; x.drawImage(img, (W - w) / 2, (H - h) / 2, w, h); c.toBlob(b => b ? res(b) : rej({}), 'image/jpeg', .85); URL.revokeObjectURL(img.src); };
+  img.onerror = () => rej({code: 'unsupported_type'}); img.src = URL.createObjectURL(file); }); }
+function manual(id, dir){
+  const o = ordOf(listOf(id)), r = FIT.rank[id], other = o[r + dir]; if (!other) return; pushUndo(); const before = r;
+  if (dir < 0) record(id, other, 'm'); else record(other, id, 'm');
+  repair(); refit(); const after = FIT.rank[id];
+  toast(after !== before ? `${S.items[id].t} : ${fr(before + 1)} → ${fr(after + 1)}` : 'Noté, mais d\'autres duels contredisent ce choix. Affine sa place pour trancher.');
+  save(); render();
+}
+
+/* ================= Démarrage ================= */
+const loaded = localLoad(); if (loaded) { S = loaded.s; D = loaded.d; }
+renderCats(); setMode(discMode); refit(); render(); connect(); initAmis();
+</script>
+
+</html>
