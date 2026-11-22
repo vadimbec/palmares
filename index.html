@@ -1,7 +1,7 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#F1F2F7" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0D0F1D" media="(prefers-color-scheme: dark)">
 <meta name="description" content="Classe tes séries par duels et compare ton classement avec tes amis.">
-<link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon.png"><meta name="apple-mobile-web-app-title" content="Palmarès">
+<link rel="icon" href="icon.svg"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon.png"><meta name="apple-mobile-web-app-title" content="Palmarès">
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}</style>
 <title>Palmarès Séries</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -317,6 +317,7 @@ nav.tabs button{font-size:12px}
 </div></nav>
 <div class="sheet-bg" id="sheet" hidden><div class="sheet-p" id="sheet-p" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="file" accept="image/*" hidden>
+<input type="file" id="bkfile" accept=".json,application/json,text/plain" hidden>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -478,7 +479,9 @@ function localSave(){ try { localStorage.setItem(LS2, JSON.stringify({s: S, d: D
 let mainRef = null, duelCol = null, histCol = null, v1Ref = null, saveT = null, saving = false, again = false, syncState = 'local', allDirty = false, mainDirty = false;
 const dirty = new Set(); const CH = 1500;
 const markDuel = i => dirty.add(Math.floor(i / CH));
-function save(){ S.updatedAt = Date.now(); mainDirty = true; snapTake(); localSave(); schedule(); }
+let persistAsked = false;
+function save(){ S.updatedAt = Date.now(); mainDirty = true; snapTake(); localSave(); schedule();
+  if (!persistAsked && !mainRef) { persistAsked = true; try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e) {} } }
 function schedule(ms = 700){ if (!mainRef) return; clearTimeout(saveT); saveT = setTimeout(flush, ms); }
 async function flush(){
   if (!mainRef) return; if (saving) { again = true; return; } saving = true;
@@ -1063,7 +1066,7 @@ function compare(P){ const E = entries(P), common = E.filter(e => e.my && !e.dro
 
 function renderAmis(){
   const el = $('#v-amis'), F = friends(); if (!F.some(P => P.id === amiSel)) amiSel = F[0] ? F[0].id : null;
-  let h = `<div><p class="eyebrow">Entre amis</p><h2>Comparer vos classements</h2></div>`;
+  let h = `<div><p class="eyebrow">Entre amis</p><h2>Comparer vos classements</h2></div>` + keepTips();
   if (!F.length) h += `<div class="empty"><b>Aucun classement d'ami pour l'instant</b><span>Envoie ton lien à tes amis (ci-dessous) et colle le leur quand ils te le renvoient.</span></div>`;
   else {
     if (F.length > 1) h += `<div class="chips">${F.map(P => `<button data-ami="${esc(P.id)}" aria-pressed="${P.id === amiSel}">${esc(P.n)}</button>`).join('')}</div>`;
@@ -1128,7 +1131,7 @@ function bindAmis(el){
     save(); const code = await encProfile(myProfile()), base = shareBase(), link = base ? base + '#ami=' + code : code;
     const out = $('#sh-out'); out.value = link; out.hidden = false; $('#sh-acts').hidden = false; $('#sh-msg').textContent = base ? `Lien prêt (${Object.keys(FIT.rank).length} séries).` : 'Code prêt.';
     $('#sh-cp').onclick = () => copy(link, 'Lien copié');
-    $('#sh-mail').onclick = () => { location.href = 'mailto:?subject=' + encodeURIComponent('Mon palmarès de séries') + '&body=' + encodeURIComponent(`Voilà mon classement de séries. Ouvre ce lien pour le voir et faire le tien :\n\n${link}\n\nRenvoie-moi ton lien (onglet Amis) pour qu'on compare.`); };
+    $('#sh-mail').onclick = () => { location.href = 'mailto:?subject=' + encodeURIComponent('Mon palmarès de séries') + '&body=' + encodeURIComponent(`Voilà mon classement de séries. Ouvre ce lien pour le voir et faire le tien :\n\n${link}\n\nOuvre-le dans Safari ou Chrome (pas dans l'appli mail), idéalement ajouté à l'écran d'accueil : ton classement reste sur ton téléphone.\n\nRenvoie-moi ton lien (onglet Amis) pour qu'on compare.`); };
     const sh = $('#sh-share'); if (sh) sh.onclick = () => navigator.share({title: 'Mon palmarès de séries', text: 'Mon classement de séries, fais le tien et renvoie-moi ton lien :', url: base ? link : undefined}).catch(() => {}); };
   $('#ami-go').onclick = async () => { const msg = $('#ami-msg');
     try { const P = await decProfile($('#ami-in').value); if (S.me && P.id === S.me.id) { msg.textContent = 'C\'est ton propre classement.'; return; }
@@ -1177,6 +1180,7 @@ function renderRank(){
   const el = $('#v-rank'); const L = curList, o = ordOf(L); const qn = S.queue.length;
   const ref = reference(L), mv = ref ? relMoves(o, ref.rank) : new Map();
   let h = `<div class="row between" style="align-items:flex-end"><div><p class="eyebrow">Résultat</p><h2>Ton palmarès</h2></div>${listSwitch()}</div>`;
+  h += bkReminder();
   if (qn) h += `<div class="result" style="grid-template-columns:1fr auto"><span><b>${qn}</b> en attente de classement</span><button class="btn primary sm" id="go-duel">Classer</button></div>`;
   if (!o.length) { el.innerHTML = h + `<div class="empty"><b>Rien de classé dans ${LISTS[L].n.toLowerCase()} pour l'instant</b><span>${L === 'a' ? 'Les animés japonais du catalogue arrivent ici automatiquement. Pour une autre série, ouvre sa fiche et choisis « Animé ».' : 'Chaque série placée par les duels apparaît ici, avec sa place et sa note.'}</span></div>` + tools(); bindRank(); return; }
   const nU = o.filter(id => widthOf(id) > 0).length;
@@ -1192,7 +1196,7 @@ function renderRank(){
   h += `<div class="row between"><div class="seg" role="group" aria-label="Affichage"><button data-rm="list" aria-pressed="${rankMode === 'list'}">Liste</button><button data-rm="wall" aria-pressed="${rankMode === 'wall'}">Mur</button></div></div>`;
   h += evolution(L, ref, mv);
   if (S.dropped.length) h += `<div class="panel"><h3>Pas finies · ${S.dropped.length}</h3><p class="muted small">Hors classement. Touche une série pour la classer quand même.</p><div class="droplist">${S.dropped.map(id => `<button data-drop="${id}">${esc(S.items[id].t)}</button>`).join('')}</div></div>`;
-  el.innerHTML = h + explain() + tools(); bindRank(); bindChart(el);
+  el.innerHTML = h + explain() + tools(); bindRank(); bindChart(el); bindBk(el);
 }
 /* Panneau Évolution : mouvements depuis une date + stabilité jour après jour */
 function evolution(L, ref, mv){
@@ -1262,6 +1266,7 @@ function explain(){ return `<div class="panel"><details><summary>Comment c'est c
 </div></details></div>`; }
 function tools(){ return `<div class="panel"><details id="tools"><summary>Sauvegarde et export</summary>
   <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+    <div class="row"><button class="btn primary sm" id="bk-file">Enregistrer une sauvegarde (fichier)</button><button class="btn sm" id="bk-load">Ouvrir un fichier de sauvegarde</button></div>
     <div class="row"><button class="btn sm" id="cp-list">Copier les classements (texte)</button><button class="btn sm" id="cp-json">Copier la sauvegarde</button></div>
     <textarea id="imp" placeholder="Colle ici une sauvegarde (ancienne ou nouvelle version) pour la restaurer"></textarea>
     <div class="row"><button class="btn sm" id="imp-go">Restaurer cette sauvegarde</button><span class="kbd" id="imp-msg"></span></div>
@@ -1279,7 +1284,8 @@ function bindRank(){
   el.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => { pushUndo(); const id = b.dataset.drop; S.dropped = S.dropped.filter(x => x !== id); S.queue.splice(S.pending ? 1 : 0, 0, id); save(); go('duel'); });
   const tl = $('#tools'); if (tl) { tl.open = toolsOpen; tl.ontoggle = () => toolsOpen = tl.open; }
   $('#cp-list').onclick = () => copy(['s', 'a'].filter(L => ordOf(L).length).map(L => LISTS[L].n.toUpperCase() + '\n' + ordOf(L).map((id, i) => { const it = S.items[id]; return `${i + 1}. ${it.t}${it.y ? ` (${it.y})` : ''} · ${fmtNote(noteOf(id))}`; }).join('\n')).join('\n\n'), 'Classements copiés');
-  $('#cp-json').onclick = () => copy(JSON.stringify({format: 'palmares-v2', s: S, d: D.map(enc), h: HIST}), 'Sauvegarde copiée, garde-la dans une note');
+  $('#cp-json').onclick = () => { bkMark(); copy(backupText(), 'Sauvegarde copiée, garde-la dans une note'); };
+  $('#bk-file').onclick = backupFile; $('#bk-load').onclick = () => $('#bkfile').click();
   const ig = $('#imp-go'); ig.onclick = () => { const msg = $('#imp-msg'); let m, hist = null;
     try { const o = JSON.parse($('#imp').value); if (o && o.format === 'palmares-v2') { m = clean(o.s, (o.d || []).map(dec)); hist = Array.isArray(o.h) ? o.h : null; } else if (o && o.items && o.tiers) m = (x => clean(x.s, x.d))(fromV1(o)); else throw 0; }
     catch(e) { msg.textContent = 'Ce texte n\'est pas une sauvegarde valide.'; return; }
@@ -1289,8 +1295,32 @@ function bindRank(){
     HIST.sort((x, y) => x.day < y.day ? -1 : 1); histLocalSave();
     matchItems(); refit(); save(); render(); toast('Sauvegarde restaurée'); };
 }
+function bindBk(el){ el.querySelectorAll('[data-bk]').forEach(b => b.onclick = backupFile); }
 function copy(text, ok){ const fallback = () => { const t = $('#imp'); t.value = text; t.focus(); t.select(); toast('Copie bloquée : texte sélectionné dans le champ'); };
   try { navigator.clipboard.writeText(text).then(() => toast(ok), fallback); } catch(e) { fallback(); } }
+
+/* Sauvegarde hors ligne : sur le site autonome, le classement ne vit que dans ce navigateur */
+const backupText = () => JSON.stringify({format: 'palmares-v2', s: S, d: D.map(enc), h: HIST});
+function bkMark(){ try { localStorage.setItem('palmares:bk', String(Date.now())); } catch(e) {} }
+async function backupFile(){ const name = 'palmares-' + dayKey() + '.json', blob = new Blob([backupText()], {type: 'application/json'});
+  try { const f = new File([blob], name, {type: 'application/json'}); if (navigator.canShare && navigator.canShare({files: [f]}) && /Android|iPhone|iPad/.test(navigator.userAgent)) { await navigator.share({files: [f], title: 'Sauvegarde Palmarès'}); bkMark(); render(); return; } } catch(e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); bkMark(); render(); toast('Sauvegarde enregistrée'); }
+$('#bkfile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const t = await f.text();
+  toolsOpen = true; go('rank'); const ta = $('#imp'); if (ta) { ta.value = t; $('#imp-go').click(); ta.scrollIntoView({block: 'center'}); } };
+/* Rappel : seulement hors Claude (pas de synchro), dès 10 séries, puis tous les 3 jours */
+function bkReminder(){ if (mainRef || Object.keys(S.items).length < 10) return '';
+  let last = 0; try { last = +localStorage.getItem('palmares:bk') || 0; } catch(e) {}
+  if (Date.now() - last < 3 * 864e5) return '';
+  return `<div class="result" style="grid-template-columns:1fr auto"><span class="small">Ton classement est gardé dans ce navigateur, sur cet appareil. ${last ? 'Dernière sauvegarde il y a ' + Math.floor((Date.now() - last) / 864e5) + ' jours.' : 'Pas encore de sauvegarde.'}</span><button class="btn primary sm" data-bk="1">Sauvegarder</button></div>`; }
+const inApp = /FBAN|FBAV|Instagram|Line\/|GSA\/|Snapchat|; wv\)/.test(navigator.userAgent);
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+function keepTips(){ if (window.claude) return '';
+  return `<div class="panel"><details${Object.keys(S.items).length < 5 ? ' open' : ''}><summary>Garder ton classement</summary><div class="explain" style="margin-top:12px">
+    ${inApp ? '<p><b>Tu es dans le navigateur d\'une appli</b> (Gmail, Messenger, Instagram…). Ouvre plutôt ce lien dans Safari ou Chrome : ce qui est fait ici risque d\'être perdu.</p>' : ''}
+    <p><b>Tout est enregistré dans ce navigateur, sur cet appareil,</b> à chaque action : tu peux fermer et revenir des jours après. Pas de compte, rien n'est envoyé.</p>
+    <p><b>Utilise toujours le même navigateur.</b> Pas de navigation privée. ${standalone ? 'Tu utilises l\'appli installée : continue depuis l\'écran d\'accueil.' : 'Le mieux : <b>ajoute la page à l\'écran d\'accueil</b> dès maintenant (iPhone : Partager › Sur l\'écran d\'accueil ; Android : menu ⋮ › Ajouter à l\'écran d\'accueil) et ouvre-la toujours depuis là. Sur iPhone, l\'icône et Safari ne partagent pas leurs données : choisis l\'un des deux.'}</p>
+    <p><b>Change d'appareil ou de navigateur</b> avec une sauvegarde : Classement › Sauvegarde et export › Enregistrer, puis « Ouvrir un fichier de sauvegarde » sur l'autre.</p>
+  </div></details></div>`; }
 
 /* ================= Fiche d'une série ================= */
 let sheetId = null, sheetDel = false, sheetPick = false, assetsNS = null;
