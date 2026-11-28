@@ -1028,7 +1028,7 @@ try { amiTab = localStorage.getItem('palmares:amitab') || 'disc'; amiSel = local
 function friends(){ const off = new Set(S.amisOff || []), by = new Map();
   const add = (P, pri) => { if (!P || off.has(P.id) || (S.me && P.id === S.me.id) || (acct && P.id === acct.id)) return;
     const k = String(P.n || '').toLowerCase(), cur = by.get(k); if (cur && (cur.pri > pri || (cur.pri === pri && (cur.P.at || 0) >= (P.at || 0)))) return; by.set(k, {P, pri}); };
-  Object.values(BAKED).forEach(P => add(P, 0)); Object.values(S.amis || {}).forEach(P => add(P, 1)); Object.values(CLOUD).forEach(P => add(P, 2));
+  if (!cloudOn()) Object.values(BAKED).forEach(P => add(P, 0)); Object.values(S.amis || {}).forEach(P => add(P, 1)); Object.values(CLOUD).forEach(P => add(P, 2));
   return [...by.values()].map(x => x.P).sort((a, b) => a.n.localeCompare(b.n)); }
 const keyOf = it => it.tm != null ? it.tm : it.t;
 function myProfile(){
