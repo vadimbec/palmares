@@ -341,6 +341,14 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
   .sheet-p{max-width:560px;max-height:none;height:100%;border-radius:22px 0 0 22px;padding:30px 30px 36px}
   .dhead{grid-template-columns:160px 1fr}
 }
+.rich{display:flex;flex-direction:column;gap:10px}
+.rrow{display:flex;flex-direction:column;gap:5px}
+.resume{font-size:14px;line-height:1.55;color:color-mix(in srgb,var(--ink) 85%,transparent)}
+.imdb{background:#F5C518;color:#000;font-weight:800;font-size:11px;padding:1px 5px;border-radius:4px;letter-spacing:.02em}
+.rmeta b{font-size:15px}
+.awards{display:flex;flex-direction:column;gap:4px}
+.aw{font-size:13.5px;font-weight:600}
+#themes{margin-top:2px;max-width:340px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -370,6 +378,7 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
         <div class="seg" role="group" aria-label="Affichage"><button id="m-grid" aria-pressed="true">Grille</button><button id="m-cards" aria-pressed="false">Cartes</button></div></div>
       <p class="muted small" id="disc-help"></p>
       <div class="chips" id="cats" role="toolbar" aria-label="Catégories"></div>
+      <select id="themes" aria-label="Choisir un thème" hidden></select>
       <div id="disc"></div>
     </div>
 
@@ -668,12 +677,15 @@ async function loadHist(){
 
 /* ================= Catalogue & affiches ================= */
 let CAT = [], CAT_TM = new Map(), CAT_KEYS = new Map(), catReady = false, catDone = false;
-const CATS = [['reco','Pour toi'],['pop','Populaires'],['f','Françaises'],['u','Britanniques'],['j','Animés'],['a','Animation'],['k','Corée & Asie'],['e','Europe & monde'],['n','Netflix'],['h','HBO / Max'],['p','Apple TV+'],['m','Prime Video'],['d','Disney+'],['o','Documentaires'],['y90','Avant 2000'],['y00','2000-2009'],['y10','2010-2019'],['y20','2020 et après']];
-function inCat(c, k){ if (k === 'pop' || k === 'reco') return true; if (k[0] === 'y') { const y = c.y || 0; return k === 'y90' ? y && y < 2000 : k === 'y00' ? y >= 2000 && y < 2010 : k === 'y10' ? y >= 2010 && y < 2020 : y >= 2020; } return c.f.includes(k); }
+const CATS = [['reco','Pour toi'],['pop','Populaires'],['top','Mieux notées'],['aw','Primées'],['emmy','Emmys'],['gg','Golden Globes'],['f','Françaises'],['u','Britanniques'],['j','Animés'],['a','Animation'],['k','Corée & Asie'],['e','Europe & monde'],['n','Netflix'],['h','HBO / Max'],['p','Apple TV+'],['m','Prime Video'],['d','Disney+'],['o','Documentaires'],['y90','Avant 2000'],['y00','2000-2009'],['y10','2010-2019'],['y20','2020 et après']];
+function inCat(c, k){ if (k === 'pop' || k === 'reco') return true; const x = c.x;
+  if (k === 'top') return !!(x && x[0] >= 80 && x[1] >= 5000); if (k === 'aw') return !!(x && x[6].some(a => a[1]));
+  if (k === 'emmy') return !!(x && x[6].some(a => a[0] <= 2)); if (k === 'gg') return !!(x && x[6].some(a => a[0] >= 4 && a[0] <= 6));
+  if (k.startsWith('k:')) return !!(x && x[2].includes(+k.slice(2))); if (k[0] === 'y') { const y = c.y || 0; return k === 'y90' ? y && y < 2000 : k === 'y00' ? y >= 2000 && y < 2010 : k === 'y10' ? y >= 2010 && y < 2020 : y >= 2020; } return c.f.includes(k); }
 fetch('catalog.json').then(r => r.json()).then(j => {
   CAT = j.items.map((a, i) => ({i, tm: a[0], n: a[1], y: a[2] || null, f: a[3] || '', net: a[4] || '', al: a[5] ? a[5].split('|') : [], g: a[6] || '', e: a[7] || null}));
   for (const c of CAT) { CAT_TM.set(c.tm, c); c.k = norm(c.n); for (const k of new Set([c.k, ...c.al.map(norm)])) { if (!CAT_KEYS.has(k)) CAT_KEYS.set(k, []); CAT_KEYS.get(k).push(c.i); } c.keys = [...new Set([c.k, ...c.al.map(norm)])].join(' | '); }
-  catReady = catDone = true; matchItems(); refit(); render();
+  catReady = catDone = true; matchItems(); refit(); render(); loadDetails();
   $('#catinfo').textContent = `${CAT.length} séries au catalogue, avec affiches. Absente ? Tape son titre et valide, elle est ajoutée telle quelle.`;
 }).catch(() => { catDone = true; render(); $('#catinfo').textContent = 'Le catalogue n\'a pas pu être chargé. Tu peux quand même ajouter des séries à la main.'; });
 function findCat(title, year){
@@ -983,10 +995,16 @@ function pool(){
   const tms = new Set(), ks = new Set(); for (const it of Object.values(S.items)) { if (it.tm) tms.add(it.tm); ks.add(norm(it.t)); }
   const sk = new Set(S.skipped);
   const P = CAT.filter(c => inCat(c, discCat) && !tms.has(c.tm) && !sk.has('#' + c.tm) && !ks.has(c.k));
-  if (discCat !== 'reco') return P;
+  if (discCat === 'top') return P.sort((a, b) => b.x[0] - a.x[0] || b.x[1] - a.x[1]);
+  if (discCat !== 'reco' && !discCat.startsWith('k:')) return P;
   const R = recoScores().m; return P.sort((a, b) => (R.get(b.tm)?.sc || 0) - (R.get(a.tm)?.sc || 0));
 }
-function renderCats(){ $('#cats').innerHTML = CATS.map(([k, n]) => `<button aria-pressed="${k === discCat}" data-c="${k}">${n}</button>`).join('');
+function renderThemes(){ const s = $('#themes'); if (!DET) return; s.hidden = false;
+  if (!s.options.length) { const cnt = new Uint16Array(DET.K.length); for (const x of DET.d) for (const k of x[2]) cnt[k]++;
+    s.innerHTML = '<option value="">Ou choisis un thème…</option>' + DET.K.map((k, i) => [k[0], i, cnt[i]]).filter(k => k[0] && k[2] >= 12).sort((a, b) => a[0].localeCompare(b[0], 'fr')).map(([n, i, c]) => `<option value="k:${i}">${esc(n)} (${c})</option>`).join('');
+    s.onchange = () => { discCat = s.value || 'reco'; gridSel.clear(); renderCats(); renderDisc(); }; }
+  s.value = discCat.startsWith('k:') ? discCat : ''; }
+function renderCats(){ renderThemes(); $('#cats').innerHTML = CATS.map(([k, n]) => `<button aria-pressed="${k === discCat}" data-c="${k}">${n}</button>`).join('');
   $('#cats').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { discCat = b.dataset.c; gridSel.clear(); renderCats(); renderDisc(); }); }
 function setMode(m){ discMode = m; try { localStorage.setItem('palmares:disc', m); } catch(e) {} $('#m-grid').setAttribute('aria-pressed', m === 'grid'); $('#m-cards').setAttribute('aria-pressed', m === 'cards'); renderDisc(); }
 $('#m-grid').onclick = () => setMode('grid'); $('#m-cards').onclick = () => setMode('cards');
@@ -1097,18 +1115,30 @@ function simF(a, b){ const u = pc(a.gm | b.gm), g = u ? pc(a.gm & b.gm) / u : .3
   return 1.3 * g + (a.reg === b.reg ? .7 : 0) + (a.net && a.net === b.net ? .45 : 0) + .5 * Math.exp(-Math.abs(a.y - b.y) / 6) + .45 * Math.exp(-Math.abs(a.lp - b.lp)) - (a.doc !== b.doc ? .8 : 0); }
 let recoCache = null;
 function recoScores(){
-  const key = Object.keys(S.items).length + ':' + S.skipped.length + ':' + CAT.length; if (recoCache && recoCache.key === key) return recoCache;
+  const key = Object.keys(S.items).length + ':' + S.skipped.length + ':' + CAT.length + ':' + !!DET; if (recoCache && recoCache.key === key) return recoCache;
   const TW = {love: 1.6, good: 1.2, meh: .8, auto: 1, drop: .7};
   const lab = [];   // [feat, poids, positif, nom]
-  for (const it of Object.values(S.items)) { const c = catOf(it); if (!c) continue; lab.push([catFeat(c), S.dropped.includes(it.id) ? .7 : TW[it.tier] || 1, 1, it.t]); }
-  for (const k of S.skipped) if (k[0] === '#') { const c = CAT_TM.get(+k.slice(1)); if (c) lab.push([catFeat(c), 1, 0, '']); }
+  for (const it of Object.values(S.items)) { const c = catOf(it); if (!c) continue; lab.push([catFeat(c), S.dropped.includes(it.id) ? .7 : TW[it.tier] || 1, 1, it.t, c]); }
+  for (const k of S.skipped) if (k[0] === '#') { const c = CAT_TM.get(+k.slice(1)); if (c) lab.push([catFeat(c), 1, 0, '', c]); }
   const npos = lab.filter(x => x[2]).length, base = (npos + 2) / (lab.length + 4);
   const seen = new Set(), ks = new Set(Object.values(S.items).map(it => norm(it.t))); for (const it of Object.values(S.items)) if (it.tm) seen.add(it.tm);
   const sk = new Set(S.skipped), out = new Map();
+  let rich = null;
+  if (DET) { const nL = lab.length, kp = new Map(), cp = new Map(), ap = new Map(), kn = new Float32Array(nL), N = CAT.length;
+    const kdf = DET.kdf || (DET.kdf = (() => { const m = new Uint16Array(DET.K.length); for (const x of DET.d) for (const k of x[2]) m[k]++; return m; })());
+    const idf2 = k => Math.log(N / (1 + kdf[k])) ** 2, post = (m, key, j) => { let a = m.get(key); if (!a) m.set(key, a = []); a.push(j); };
+    lab.forEach((l, j) => { const x = l[4] && l[4].x; if (!x) return; let s = 0; for (const k of x[2]) { post(kp, k, j); s += idf2(k); } kn[j] = Math.sqrt(s); for (const p of x[3]) post(cp, p, j); for (const p of x[4]) post(ap, p, j); });
+    const acc = new Float32Array(nL), acr = new Uint8Array(nL), aca = new Uint8Array(nL);
+    rich = c => { const x = c.x; if (!x) return null; acc.fill(0); acr.fill(0); aca.fill(0); let s = 0;
+      for (const k of x[2]) { const w = idf2(k); s += w; const a = kp.get(k); if (a) for (const j of a) acc[j] += w; }
+      const cn = Math.sqrt(s) || 1; for (const p of x[3]) { const a = cp.get(p); if (a) for (const j of a) acr[j] = 1; }
+      for (const p of x[4]) { const a = ap.get(p); if (a) for (const j of a) aca[j] = Math.min(3, aca[j] + 1); }
+      return j => (kn[j] ? 1.0 * acc[j] / (cn * kn[j]) : 0) + .3 * acr[j] + .07 * aca[j]; };
+  }
   for (const c of CAT) { if (seen.has(c.tm) || sk.has('#' + c.tm) || ks.has(c.k)) continue;
-    const f = catFeat(c); let num = base * 3, den = 3, b1 = null, b2 = null, s1 = -1, s2 = -1;
-    for (const [lf, w, pos, nm] of lab) { const s = simF(f, lf), k = w * Math.exp(4 * s); den += k; if (pos) { num += k; if (s > s1) { s2 = s1; b2 = b1; s1 = s; b1 = nm; } else if (s > s2) { s2 = s; b2 = nm; } } }
-    const p = num / den; out.set(c.tm, {p, sc: p * (.6 + .4 * Math.exp(-c.i / 1500)), why: [b1, b2].filter(Boolean)}); }
+    const f = catFeat(c), X = rich ? rich(c) : null; let num = base * 3, den = 3, b1 = null, b2 = null, s1 = -1, s2 = -1;
+    for (let j = 0; j < lab.length; j++) { const [lf, w, pos, nm] = lab[j], s = simF(f, lf) + (X ? X(j) : 0), k = w * Math.exp(4 * s); den += k; if (pos) { num += k; if (s > s1) { s2 = s1; b2 = b1; s1 = s; b1 = nm; } else if (s > s2) { s2 = s; b2 = nm; } } }
+    const p = num / den; out.set(c.tm, {p, sc: p * (.3 + .7 * Math.exp(-c.i / 1200)), why: [b1, b2].filter(Boolean)}); }
   return recoCache = {key, m: out};
 }
 
@@ -1403,6 +1433,27 @@ async function initCloud(){
   render();
 }
 
+/* ================= Catalogue enrichi (TMDB, IMDb, Wikidata) ================= */
+let DET = null, RES = null, resLoading = false;
+function loadDetails(){ fetch('details.json').then(r => r.json()).then(j => { DET = j; CAT.forEach((c, i) => c.x = j.d[i]); recoCache = null; renderCats(); render(); }).catch(() => {}); }
+function loadRes(){ if (RES || resLoading) return; resLoading = true; fetch('resumes.json').then(r => r.json()).then(j => { RES = j; if (sheetId) renderSheet(); }).catch(() => {}); }
+const kfmt = v => v >= 1e6 ? fmtNote(v / 1e6) + ' M' : v >= 1000 ? Math.round(v / 1000) + ' k' : String(v);
+function richOf(it){ const c = catOf(it); if (!c || !c.x) return '';
+  const [r, v, kw, cr, , pv, aw, ns, ne] = c.x, out = [];
+  const meta = [r ? `<span class="imdb">IMDb</span> <b>${fmtNote(r / 10)}</b> <span class="muted">· ${kfmt(v)} votes</span>` : '', ns ? `${ns} saison${ns > 1 ? 's' : ''}${ne ? ` · ${ne} épisodes` : ''}` : ''].filter(Boolean);
+  if (meta.length) out.push(`<p class="small rmeta">${meta.join('<span class="muted"> · </span>')}</p>`);
+  loadRes(); const rs = RES && RES[c.i];
+  if (rs && rs[0]) out.push(`<p class="resume">${esc(rs[0])}</p>`);
+  const W = new Map(), N = new Map(); for (const [f, w, y] of aw) { const m = w ? W : N; if (!m.has(f)) m.set(f, []); if (y) m.get(f).push(y); }
+  if (W.size) out.push(`<div class="awards">${[...W].map(([f, ys]) => `<span class="aw">🏆 ${esc(DET.A[f][1])}${ys.length ? ` <span class="muted">${[...new Set(ys)].sort().join(', ')}</span>` : ''}</span>`).join('')}</div>`);
+  const noms = [...N.keys()].filter(f => !W.has(f)); if (noms.length) out.push(`<p class="kbd">Nommée : ${noms.map(f => esc(DET.A[f][1])).join(' · ')}</p>`);
+  const chips = (label, arr) => arr.length ? `<div class="rrow"><span class="kbd">${label}</span><span class="gchips">${arr.map(x => `<span>${esc(x)}</span>`).join('')}</span></div>` : '';
+  out.push(chips('Où regarder en France', pv.map(i => DET.V[i])));
+  out.push(chips('Thèmes', kw.map(i => DET.K[i][0]).filter(Boolean).slice(0, 10)));
+  if (cr.length) out.push(`<p class="small"><span class="kbd">Créée par</span> ${esc(cr.map(i => DET.P[i]).join(', '))}</p>`);
+  if (rs && rs[1]) out.push(`<p class="small"><span class="kbd">Avec</span> ${esc(rs[1])}</p>`);
+  return `<div class="rich">${out.join('')}</div>`; }
+
 /* ================= Mise en page : deux colonnes sur ordinateur ================= */
 function twoCol(el, isSide){ const kids = [...el.children]; if (kids.length < 2) return;
   const cols = document.createElement('div'), mc = document.createElement('div'), sc = document.createElement('aside');
@@ -1607,7 +1658,7 @@ function renderSheet(){
       ${ranked ? `<span class="big-note">${fmtNote(noteOf(it.id))}<span class="muted" style="font-size:16px">/10</span></span>
         <span class="small">${fr(r + 1)} sur ${o.length} ${LISTS[L].pl} ${conf(it.id)}</span><span class="kbd">${placeRange(it.id)}${nr}</span>` : `<span class="small muted">${S.dropped.includes(it.id) ? 'Pas finie, hors classement' : 'En attente de classement'}</span>`}
     </div></div>
-    <div class="field"><label>Classement</label><div class="tiersel">${['s', 'a'].map(k => `<button data-mv="${k}" aria-pressed="${L === k}">${LISTS[k].n}</button>`).join('')}</div></div>
+    ${richOf(it)}<div class="field"><label>Classement</label><div class="tiersel">${['s', 'a'].map(k => `<button data-mv="${k}" aria-pressed="${L === k}">${LISTS[k].n}</button>`).join('')}</div></div>
     ${ranked ? `<div class="field"><label>Palier de départ</label><div class="tiersel">${[...TIERS, 'auto'].map(t => `<button data-tier="${t}" aria-pressed="${it.tier === t}">${TINFO[t].n}</button>`).join('')}</div></div>
     <div class="row"><button class="btn primary sm" id="s-ref">Affiner sa place (5 duels)</button><button class="btn sm" id="s-up" ${r === 0 ? 'disabled' : ''}>▲ Préférée à la ${r > 0 ? fr(r) : ''}</button><button class="btn sm" id="s-dn" ${r === o.length - 1 ? 'disabled' : ''}>▼ Moins que la ${fr(r + 2)}</button></div>` : ''}
     ${ranked ? `<div><h3>Évolution</h3>${pts.length >= 2 ? lineChart(pts.slice(-60), o.length) : `<p class="kbd">La courbe de sa place apparaîtra quand le classement aura été photographié sur au moins deux jours.</p>`}</div>` : ''}
