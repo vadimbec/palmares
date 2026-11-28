@@ -374,6 +374,11 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
 .champ b,.gl b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .glist{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
 @media (min-width:1024px){ nav.tabs .wrap{display:flex} }
+.gcell .info{position:absolute;top:6px;left:6px;width:24px;height:24px;border-radius:50%;background:rgba(10,12,25,.6);border:1.5px solid rgba(255,255,255,.85);color:#fff;font:italic 700 13px/21px Georgia,serif;text-align:center;z-index:2;cursor:pointer}
+.gcell .info:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.ainfo{border:0;background:none;padding:0;display:block;cursor:pointer}
+.wlist{display:flex;flex-direction:column;gap:4px}
+.wl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -406,6 +411,8 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
       <select id="themes" aria-label="Choisir un thème" hidden></select>
       <div id="disc"></div>
     </div>
+
+    <div class="panel" id="watch-panel" hidden></div>
 
     <div class="panel" id="ai-panel" hidden>
       <h3>Les oubliées probables</h3>
@@ -757,7 +764,7 @@ function addItem(t, y, opts = {}){
   const c = opts.cat || findCat(t, y);
   if (hasItem(c ? c.n : t, c ? c.tm : null) || (c && hasItem(t))) return null;
   const id = newId(); const it = {id, t: c ? c.n : t, y: y || (c && c.y) || null, at: Date.now()}; if (c) it.tm = c.tm; it.an = !!(c && c.f.includes('j'));
-  S.items[id] = it; const drop = new Set([norm(t), c ? '#' + c.tm : '']); S.skipped = S.skipped.filter(k => !drop.has(k));
+  S.items[id] = it; if (c && S.watch) S.watch = S.watch.filter(t => t !== c.tm); const drop = new Set([norm(t), c ? '#' + c.tm : '']); S.skipped = S.skipped.filter(k => !drop.has(k));
   (opts.dropped ? S.dropped : S.queue).push(id); return id;
 }
 function removeItem(id){ S.queue = S.queue.filter(x => x !== id); S.dropped = S.dropped.filter(x => x !== id);
@@ -774,7 +781,7 @@ function go(v){
 document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab));
 function render(){ renderStats(); document.querySelectorAll('[data-view]').forEach(s => s.hidden = s.dataset.view !== view);
   document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === view));
-  if (view === 'duel') renderDuel(); if (view === 'add') { amisHint(); renderHits(); renderDisc(); } if (view === 'amis') renderAmis(); if (view === 'gouts') renderGouts(); if (view === 'rank') renderRank(); if (sheetId) renderSheet(); }
+  if (view === 'duel') renderDuel(); if (view === 'add') { amisHint(); renderHits(); renderDisc(); renderWatch(); } if (view === 'amis') renderAmis(); if (view === 'gouts') renderGouts(); if (view === 'rank') renderRank(); if (sheetId) renderSheet(); }
 function renderStats(){
   const ns = FIT.orders.s.length, na = FIT.orders.a.length, q = S.queue.length;
   const sy = {ok:['ok', acct ? 'En ligne' : 'Synchronisé'], wait:['','Connexion…'], slow:['err','Synchro lente'], err:['err','Hors ligne'], full:['err','Stockage plein'], local:['','Sur cet appareil']}[syncState];
@@ -912,7 +919,7 @@ function resultCard(){
     <div class="kbd">${above ? `sous ${esc(S.items[above].t)}` : 'tout en haut'}${below ? ` · devant ${esc(S.items[below].t)}` : ''}</div></div></div>`;
 }
 function renderDuel(){
-  const el = $('#v-duel');
+  const el = $('#v-duel'); setTimeout(() => { if (view === 'duel' && sb && !acct && Object.keys(S.items).length >= 15 && !$('#v-duel [data-login]')) { el.insertAdjacentHTML('afterbegin', loginNudge()); bindBk(el); } }, 0);
   if (refine && refine.mode === 'flow' && !refine.manual && S.queue.length) refine = null;   // les nouvelles séries passent avant
   if (refine && refine.pair && refine.pair.some(id => FIT.rank[id] == null || listOf(id) !== refine.L)) { refine.pair = pickPair(refine); if (!refine.pair) refine = null; }
   if (!refine && !paused && catDone && !ensurePending() && ordOf(curList).length >= 2) { refine = {L: curList, left: Infinity, mode: 'flow', recent: [], done: 0}; refine.pair = pickPair(refine); if (!refine.pair) refine = null; }
@@ -1021,7 +1028,8 @@ try { discMode = localStorage.getItem('palmares:disc') || 'grid'; } catch(e) {}
 function pool(){
   const tms = new Set(), ks = new Set(); for (const it of Object.values(S.items)) { if (it.tm) tms.add(it.tm); ks.add(norm(it.t)); }
   const sk = new Set(S.skipped);
-  const P = CAT.filter(c => inCat(c, discCat) && !tms.has(c.tm) && !sk.has('#' + c.tm) && !ks.has(c.k));
+  const wl = new Set(S.watch || []);
+  const P = CAT.filter(c => inCat(c, discCat) && !tms.has(c.tm) && !sk.has('#' + c.tm) && !ks.has(c.k) && !wl.has(c.tm));
   if (discCat === 'top') return P.sort((a, b) => b.x[0] - a.x[0] || b.x[1] - a.x[1]);
   if (discCat !== 'reco' && !discCat.startsWith('k:')) return P;
   const R = recoScores().m; return P.sort((a, b) => (R.get(b.tm)?.sc || 0) - (R.get(a.tm)?.sc || 0));
@@ -1045,9 +1053,9 @@ function renderDisc(){
   if (!P.length) { box.innerHTML = head + '<div class="empty"><b>Catégorie terminée</b><span>Choisis une autre catégorie ou passe aux duels.</span></div>'; return; }
   if (discMode === 'grid') {
     const page = P.slice(0, 24);
-    box.innerHTML = head + `<div class="grid">${page.map(c => `<button class="gcell ${gridSel.size ? 'dim' : ''}" data-tm="${c.tm}" aria-pressed="${gridSel.has(c.tm)}">${art(c, 'big')}<span class="ck">${gridSel.has(c.tm) ? '✓' : ''}</span><span class="gn">${esc(c.n)}</span>${R ? `<span class="gw">${esc(why(c))}</span>` : ''}</button>`).join('')}</div>
+    box.innerHTML = head + `<div class="grid">${page.map(c => `<button class="gcell ${gridSel.size ? 'dim' : ''}" data-tm="${c.tm}" aria-pressed="${gridSel.has(c.tm)}">${art(c, 'big')}<span class="info" data-cat="${c.tm}" role="button" aria-label="Voir la fiche" title="Voir la fiche">i</span><span class="ck">${gridSel.has(c.tm) ? '✓' : ''}</span><span class="gn">${esc(c.n)}</span>${R ? `<span class="gw">${esc(why(c))}</span>` : ''}</button>`).join('')}</div>
       <div class="row between"><button class="btn primary" id="g-ok">Valider : ${gridSel.size} vue${gridSel.size>1?'s':''}, ${page.length - gridSel.size} pas vue${page.length - gridSel.size>1?'s':''}</button><button class="btn ghost sm" id="g-undo" ${deckHist.length ? '' : 'disabled'}>Annuler la page</button></div>`;
-    box.querySelectorAll('.gcell').forEach(b => b.onclick = () => { const tm = +b.dataset.tm; gridSel.has(tm) ? gridSel.delete(tm) : gridSel.add(tm); renderDisc(); });
+    box.querySelectorAll('.gcell').forEach(b => b.onclick = () => { const tm = +b.dataset.tm; gridSel.has(tm) ? gridSel.delete(tm) : gridSel.add(tm); renderDisc(); }); bindCat(box);
     $('#g-ok').onclick = () => { pushUndo(); const added = [], sk = [];
       for (const c of page) { if (gridSel.has(c.tm)) { const id = addItem(c.n, c.y, {cat: c}); if (id) added.push(id); } else { S.skipped.push('#' + c.tm); sk.push('#' + c.tm); } }
       deckHist.push({added, sk}); gridSel.clear(); save(); render(); toast(`${added.length} ajoutée${added.length>1?'s':''} à classer`); };
@@ -1056,11 +1064,11 @@ function renderDisc(){
     const [c, n] = P;
     box.innerHTML = head + `<div class="deck" id="deck">${n ? `<div class="card back">${art(n, 'big')}</div>` : ''}<div class="card front" id="front">${art(c, 'big')}<div class="cn">${esc(c.n)} <span class="muted">${c.y || ''}</span>${R && why(c) ? `<div class="gw">${esc(why(c))}</div>` : ''}</div></div><span class="stamp yes" id="sy">VUE</span><span class="stamp no" id="sn">PAS VUE</span></div>
       <div class="deckbtns"><button class="btn no" id="d-no">← Pas vue</button><button class="btn" id="d-drop">Pas finie</button><button class="btn yes" id="d-yes">Vue →</button></div>
-      <div class="row"><button class="btn ghost sm" id="d-undo" ${deckHist.length ? '' : 'disabled'}>Annuler le dernier</button></div>`;
+      <div class="row"><button class="btn ghost sm" id="d-info">Voir la fiche</button><button class="btn ghost sm" id="d-undo" ${deckHist.length ? '' : 'disabled'}>Annuler le dernier</button></div>`;
     const act = kind => { const added = [], sk = [];
       if (kind === 'no') { S.skipped.push('#' + c.tm); sk.push('#' + c.tm); } else { const id = addItem(c.n, c.y, {cat: c, dropped: kind === 'drop'}); if (id) added.push(id); }
       deckHist.push({added, sk}); if (deckHist.length > 60) deckHist.shift(); save(); render(); };
-    $('#d-no').onclick = () => act('no'); $('#d-yes').onclick = () => act('yes'); $('#d-drop').onclick = () => act('drop'); $('#d-undo').onclick = undoDisc;
+    $('#d-no').onclick = () => act('no'); $('#d-yes').onclick = () => act('yes'); $('#d-drop').onclick = () => act('drop'); $('#d-undo').onclick = undoDisc; $('#d-info').onclick = () => openCat(c.tm);
     bindSwipe($('#front'), dx => act(dx > 0 ? 'yes' : 'no'));
   }
 }
@@ -1228,7 +1236,7 @@ function renderAmis(){
   let h = `<div><p class="eyebrow">Entre amis</p><h2>Comparer vos classements</h2></div>` + accountPanel() + keepTips();
   if (!F.length) h += `<div class="empty"><b>Aucun classement d'ami pour l'instant</b><span>Envoie ton lien à tes amis (ci-dessous) et colle le leur quand ils te le renvoient.</span></div>`;
   else {
-    if (F.length > 1) h += `<div class="chips">${F.map(P => `<button data-ami="${esc(P.id)}" aria-pressed="${P.id === amiSel}">${esc(P.n)}</button>`).join('')}</div>`;
+    if (F.length > 1) h += `<div class="chips">${F.map(P => `<button data-ami="${esc(P.id)}" aria-pressed="${P.id === amiSel}">${esc(P.n)}${(a => a != null ? ` <span class="muted">${a} %</span>` : '')(compare(P).acc)}</button>`).join('')}</div>`;
     const P = F.find(x => x.id === amiSel), C = compare(P), mineN = Object.keys(FIT.rank).length;
     h += `<div class="panel"><div class="row between"><h3>${esc(P.n)}</h3><span class="kbd">photo du ${new Date(P.at).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}</span></div>
       <div class="astats"><div><b>${P.s.length}</b><span>séries</span></div><div><b>${P.a.length}</b><span>animés</span></div><div><b>${C.common.length}</b><span>en commun</span></div><div><b>${C.acc != null ? C.acc + ' %' : '–'}</b><span>d'accord</span></div></div>
@@ -1236,7 +1244,7 @@ function renderAmis(){
       ${C.common.length >= 6 ? `<div><p class="kbd" style="margin-bottom:6px">Vos plus gros désaccords</p><div class="mvrow">${[...C.common].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, 4).map(e => `<button class="mvchip" data-open="${e.my}"><span class="${e.gap < 0 ? 'mv-up' : 'mv-dn'}">${e.gap < 0 ? 'toi ▲' : 'toi ▼'}</span> ${esc(e.t)}</button>`).join('')}</div></div>` : ''}</div>`;
     const tabs = [['disc', 'À découvrir', C.disc.length], ['rank', 'Son classement', P.s.length + P.a.length], ['common', 'En commun', C.common.length], ['mine', 'Que toi', C.mine.length]];
     h += `<div class="chips">${tabs.map(([k, n, c]) => `<button data-at="${k}" aria-pressed="${amiTab === k}">${n} <span class="muted">${c}</span></button>`).join('')}</div>`;
-    const row = (e, i, right, sub) => `<li class="arow${i != null ? '' : ' nr'}">${i != null ? `<span class="rnum">${i}</span>` : ''}${artE(e)}<span class="rt"><b>${esc(e.t)}</b><span>${sub}</span></span>${right}</li>`;
+    const row = (e, i, right, sub) => `<li class="arow${i != null ? '' : ' nr'}">${i != null ? `<span class="rnum">${i}</span>` : ''}<button class="ainfo" data-cat="${e.c ? e.c.tm : ''}" aria-label="Voir la fiche">${artE(e)}</button><span class="rt"><b>${esc(e.t)}</b><span>${sub}</span></span>${right}</li>`;
     const score = x => `<span class="score">${fmtNote(x)}</span>`;
     if (amiTab === 'disc') {
       h += `<p class="kbd">Ses séries que tu n'as pas encore rangées, de sa préférée à la moins aimée. Dis si tu les as vues : les « vue » partent en duels dans ton propre classement.</p>`;
@@ -1269,7 +1277,7 @@ function renderAmis(){
     ${base ? '' : '<p class="kbd">Ici le lien n\'est pas encore relié au site : copie le code, ton ami pourra le coller dans « Ajouter le classement d\'un ami ».</p>'}</div>
     <div class="panel"><h3>Ajouter le classement d'un ami</h3><p class="muted small">Ouvre le lien reçu, ou colle-le ici.</p>
     <textarea id="ami-in" placeholder="Colle le lien ou le code"></textarea><div class="row"><button class="btn" id="ami-go">Ajouter</button><span class="kbd" id="ami-msg"></span></div></div>`;
-  el.innerHTML = h; bindAmis(el); bindAccount(el); twoCol(el, k => k.id === 'acct' || k.id === 'keeptips' || !!k.querySelector('#sh-go, #ami-go'));
+  el.innerHTML = h; bindAmis(el); bindAccount(el); bindCat(el); twoCol(el, k => k.id === 'acct' || k.id === 'keeptips' || !!k.querySelector('#sh-go, #ami-go'));
 }
 function bindAmis(el){
   el.querySelectorAll('[data-ami]').forEach(b => b.onclick = () => { amiSel = b.dataset.ami; try { localStorage.setItem('palmares:amisel', amiSel); } catch(e) {} renderAmis(); });
@@ -1554,6 +1562,33 @@ function renderGouts(){
   twoCol(el, k => k.id === 'g-champ' || k.id === 'g-imdb');
 }
 
+/* ================= Fiche d'une série du catalogue (vue ou pas) + liste « À voir » ================= */
+function openCat(tm){ const it = Object.values(S.items).find(x => x.tm === tm); openSheet(it ? it.id : 'c:' + tm); }
+function bindCat(root){ root.querySelectorAll('[data-cat]').forEach(b => b.onclick = e => { e.stopPropagation(); if (b.dataset.cat) openCat(+b.dataset.cat); }); }
+function friendsOn(tm, t){ const k = norm(t), out = [];
+  for (const P of friends()) for (const L of ['s', 'a']) (P[L] || []).forEach(([key, nt], r) => { if (key === tm || (typeof key === 'string' && norm(key) === k)) out.push(`${esc(P.n)} : ${fr(r + 1)}${L === 'a' ? ' animé' : ''} · ${fmtNote(nt / 10)}`); });
+  return out.length ? `<span class="gchips">${out.map(x => `<span>${x}</span>`).join('')}</span>` : ''; }
+function renderCatSheet(tm){ const c = CAT_TM.get(tm); if (!c) { closeSheet(); return; }
+  const o = {tm, t: c.n}, w = (S.watch || []).includes(tm), no = S.skipped.includes('#' + tm);
+  $('#sheet-p').innerHTML = backdrop(o) + `<div class="dhead">${art(c, 'big')}<div><h2>${esc(c.n)}</h2>${ficheOf(o)}${friendsOn(tm, c.n)}
+      <span class="small muted">${no ? 'Tu l\'as marquée « pas vue »' : w ? 'Dans ta liste À voir' : 'Pas encore dans ta liste'}</span></div></div>
+    ${richOf(o)}
+    <div class="row"><button class="btn primary sm" id="cs-yes">Je l'ai vue</button><button class="btn sm" id="cs-drop">Pas finie</button><button class="btn sm" id="cs-watch">${w ? 'Retirer de À voir' : '+ À voir'}</button>${no ? '' : '<button class="btn sm ghost" id="cs-no">Pas vue</button>'}<button class="btn ghost sm" id="cs-close">Fermer</button></div>`;
+  const P = $('#sheet-p'), on = (s, f) => { const e = P.querySelector(s); if (e) e.onclick = f; };
+  const add = dropped => { pushUndo(); const id = addItem(c.n, c.y, {cat: c, dropped}); save(); closeSheet(); toast(id ? (dropped ? `« ${c.n} » rangée dans Pas finies` : `« ${c.n} » ajoutée, à classer dans Duels`) : 'Déjà dans ta liste'); };
+  on('#cs-yes', () => add(false)); on('#cs-drop', () => add(true)); on('#cs-close', closeSheet);
+  on('#cs-watch', () => { pushUndo(); const L = new Set(S.watch || []); w ? L.delete(tm) : L.add(tm); S.watch = [...L]; S.skipped = S.skipped.filter(k => k !== '#' + tm); save(); render(); toast(w ? 'Retirée de À voir' : 'Ajoutée à À voir'); });
+  on('#cs-no', () => { pushUndo(); S.skipped.push('#' + tm); S.watch = (S.watch || []).filter(t => t !== tm); save(); closeSheet(); toast('Marquée « pas vue »'); });
+}
+function renderWatch(){ const el = $('#watch-panel'); if (!el) return; const L = (S.watch || []).map(t => CAT_TM.get(t)).filter(Boolean); el.hidden = !L.length; if (!L.length) { el.innerHTML = ''; return; }
+  const sub = c => [c.x && c.x[0] ? 'IMDb ' + fmtNote(c.x[0] / 10) : '', c.x && DET ? c.x[5].slice(0, 3).map(i => DET.V[i]).join(', ') : ''].filter(Boolean).join(' · ');
+  el.innerHTML = `<h3>À voir · ${L.length}</h3><p class="kbd">Tes envies, avec où les regarder en France.</p><div class="wlist">${L.map(c => `<div class="wl"><button class="gl" data-cat="${c.tm}">${art(c, 'sm')}<span><b>${esc(c.n)}</b><span class="kbd">${esc(sub(c))}</span></span></button><button class="btn sm yes" data-wy="${c.tm}">Vue</button></div>`).join('')}</div>`;
+  bindCat(el);
+  el.querySelectorAll('[data-wy]').forEach(b => b.onclick = () => { const c = CAT_TM.get(+b.dataset.wy); pushUndo(); addItem(c.n, c.y, {cat: c}); save(); render(); toast(`« ${c.n} » ajoutée, à classer dans Duels`); });
+}
+/* Rappel : on a commencé sans compte -> une connexion suffit pour tout garder en ligne */
+function loginNudge(){ return `<div class="result" style="grid-template-columns:1fr auto"><span class="small"><b>Ne perds pas ton classement.</b> Il n'existe que sur cet appareil : crée ton compte (adresse mail + code, 30 secondes) pour le garder en ligne et le retrouver partout.</span><button class="btn primary sm" data-login="1">Me connecter</button></div>`; }
+
 /* ================= Mise en page : deux colonnes sur ordinateur ================= */
 function twoCol(el, isSide){ const kids = [...el.children]; if (kids.length < 2) return;
   const cols = document.createElement('div'), mc = document.createElement('div'), sc = document.createElement('aside');
@@ -1702,7 +1737,7 @@ function bindRank(){
     HIST.sort((x, y) => x.day < y.day ? -1 : 1); histLocalSave();
     matchItems(); refit(); save(); render(); toast('Sauvegarde restaurée'); };
 }
-function bindBk(el){ el.querySelectorAll('[data-bk]').forEach(b => b.onclick = backupFile); }
+function bindBk(el){ el.querySelectorAll('[data-bk]').forEach(b => b.onclick = backupFile); el.querySelectorAll('[data-login]').forEach(b => b.onclick = () => { go('amis'); setTimeout(() => { const m = $('#a-mail'); if (m) { m.scrollIntoView({block: 'center'}); m.focus(); } }, 50); }); }
 function copy(text, ok){ const fallback = () => { const t = $('#imp'); t.value = text; t.focus(); t.select(); toast('Copie bloquée : texte sélectionné dans le champ'); };
   try { navigator.clipboard.writeText(text).then(() => toast(ok), fallback); } catch(e) { fallback(); } }
 
@@ -1715,7 +1750,7 @@ async function backupFile(){ const name = 'palmares-' + dayKey() + '.json', blob
 $('#bkfile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const t = await f.text();
   toolsOpen = true; go('rank'); const ta = $('#imp'); if (ta) { ta.value = t; $('#imp-go').click(); ta.scrollIntoView({block: 'center'}); } };
 /* Rappel : seulement hors Claude (pas de synchro), dès 10 séries, puis tous les 3 jours */
-function bkReminder(){ if (mainRef || cloudOn() || Object.keys(S.items).length < 10) return '';
+function bkReminder(){ if (sb && !acct && Object.keys(S.items).length >= 5) return loginNudge(); if (mainRef || cloudOn() || Object.keys(S.items).length < 10) return '';
   let last = 0; try { last = +localStorage.getItem('palmares:bk') || 0; } catch(e) {}
   if (Date.now() - last < 3 * 864e5) return '';
   return `<div class="result" style="grid-template-columns:1fr auto"><span class="small">Ton classement est gardé dans ce navigateur, sur cet appareil. ${last ? 'Dernière sauvegarde il y a ' + Math.floor((Date.now() - last) / 864e5) + ' jours.' : 'Pas encore de sauvegarde.'}</span><button class="btn primary sm" data-bk="1">Sauvegarder</button></div>`; }
@@ -1741,6 +1776,7 @@ function itemHistory(id, L){
   return pts;
 }
 function renderSheet(){
+  if (String(sheetId).startsWith('c:')) { renderCatSheet(+String(sheetId).slice(2)); return; }
   const it = S.items[sheetId]; if (!it) { closeSheet(); return; }
   const L = listOf(it.id), o = ordOf(L), r = FIT.rank[it.id]; const ranked = r != null;
   const mine = D.map((d, i) => [d, i]).filter(([d]) => d.a === it.id || d.b === it.id).reverse();
