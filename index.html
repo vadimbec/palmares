@@ -379,6 +379,17 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
 .ainfo{border:0;background:none;padding:0;display:block;cursor:pointer}
 .wlist{display:flex;flex-direction:column;gap:4px}
 .wl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.vchips{flex-wrap:wrap;gap:4px}
+.vchips span{font-size:11px;padding:1px 7px}
+.vchips span.me{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));color:var(--ink)}
+.fdpair{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;max-width:420px}
+.fdpair>div{display:flex;flex-direction:column;gap:6px;min-width:0;text-align:center;align-items:center}
+.fdpair .ainfo{width:100%}
+.fdpair .art{width:100%}
+.fdpair>div.ok .art{outline:3px solid var(--good);outline-offset:2px}
+.fdpair>div.ko .art{opacity:.5}
+.vs2{font-family:var(--display);font-weight:800;font-size:13px;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:6px 9px}
+.fdg:disabled{cursor:default}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -403,6 +414,8 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
       <p class="kbd" id="catinfo">Catalogue en cours de chargement…</p>
     </div>
 
+    <div class="panel" id="watch-panel"></div>
+
     <div class="panel">
       <div class="row between"><h3>Fouiller ta mémoire</h3>
         <div class="seg" role="group" aria-label="Affichage"><button id="m-grid" aria-pressed="true">Grille</button><button id="m-cards" aria-pressed="false">Cartes</button></div></div>
@@ -411,8 +424,6 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
       <select id="themes" aria-label="Choisir un thème" hidden></select>
       <div id="disc"></div>
     </div>
-
-    <div class="panel" id="watch-panel" hidden></div>
 
     <div class="panel" id="ai-panel" hidden>
       <h3>Les oubliées probables</h3>
@@ -1064,11 +1075,11 @@ function renderDisc(){
     const [c, n] = P;
     box.innerHTML = head + `<div class="deck" id="deck">${n ? `<div class="card back">${art(n, 'big')}</div>` : ''}<div class="card front" id="front">${art(c, 'big')}<div class="cn">${esc(c.n)} <span class="muted">${c.y || ''}</span>${R && why(c) ? `<div class="gw">${esc(why(c))}</div>` : ''}</div></div><span class="stamp yes" id="sy">VUE</span><span class="stamp no" id="sn">PAS VUE</span></div>
       <div class="deckbtns"><button class="btn no" id="d-no">← Pas vue</button><button class="btn" id="d-drop">Pas finie</button><button class="btn yes" id="d-yes">Vue →</button></div>
-      <div class="row"><button class="btn ghost sm" id="d-info">Voir la fiche</button><button class="btn ghost sm" id="d-undo" ${deckHist.length ? '' : 'disabled'}>Annuler le dernier</button></div>`;
+      <div class="row"><button class="btn ghost sm" id="d-info">Voir la fiche</button><button class="btn ghost sm" id="d-watch">+ À voir</button><button class="btn ghost sm" id="d-undo" ${deckHist.length ? '' : 'disabled'}>Annuler le dernier</button></div>`;
     const act = kind => { const added = [], sk = [];
       if (kind === 'no') { S.skipped.push('#' + c.tm); sk.push('#' + c.tm); } else { const id = addItem(c.n, c.y, {cat: c, dropped: kind === 'drop'}); if (id) added.push(id); }
       deckHist.push({added, sk}); if (deckHist.length > 60) deckHist.shift(); save(); render(); };
-    $('#d-no').onclick = () => act('no'); $('#d-yes').onclick = () => act('yes'); $('#d-drop').onclick = () => act('drop'); $('#d-undo').onclick = undoDisc; $('#d-info').onclick = () => openCat(c.tm);
+    $('#d-no').onclick = () => act('no'); $('#d-yes').onclick = () => act('yes'); $('#d-drop').onclick = () => act('drop'); $('#d-undo').onclick = undoDisc; $('#d-info').onclick = () => openCat(c.tm); $('#d-watch').onclick = () => { pushUndo(); S.watch = [...new Set([...(S.watch || []), c.tm])]; save(); render(); toast(`« ${c.n} » ajoutée à À voir`); };
     bindSwipe($('#front'), dx => act(dx > 0 ? 'yes' : 'no'));
   }
 }
@@ -1236,13 +1247,15 @@ function renderAmis(){
   let h = `<div><p class="eyebrow">Entre amis</p><h2>Comparer vos classements</h2></div>` + accountPanel() + keepTips();
   if (!F.length) h += `<div class="empty"><b>Aucun classement d'ami pour l'instant</b><span>Envoie ton lien à tes amis (ci-dessous) et colle le leur quand ils te le renvoient.</span></div>`;
   else {
+    h += modeSeg();
+    if (amiMode === 'groupe') h += groupPanel(F); else {
     if (F.length > 1) h += `<div class="chips">${F.map(P => `<button data-ami="${esc(P.id)}" aria-pressed="${P.id === amiSel}">${esc(P.n)}${(a => a != null ? ` <span class="muted">${a} %</span>` : '')(compare(P).acc)}</button>`).join('')}</div>`;
     const P = F.find(x => x.id === amiSel), C = compare(P), mineN = Object.keys(FIT.rank).length;
     h += `<div class="panel"><div class="row between"><h3>${esc(P.n)}</h3><span class="kbd">photo du ${new Date(P.at).toLocaleDateString('fr-FR', {day: 'numeric', month: 'short'})}</span></div>
       <div class="astats"><div><b>${P.s.length}</b><span>séries</span></div><div><b>${P.a.length}</b><span>animés</span></div><div><b>${C.common.length}</b><span>en commun</span></div><div><b>${C.acc != null ? C.acc + ' %' : '–'}</b><span>d'accord</span></div></div>
       <p class="kbd">${!mineN ? `Tu n'as encore rien classé. Commence par « À découvrir » : dis ce que tu as vu parmi ses séries, puis fais tes duels.` : C.acc != null ? `« D'accord » : sur deux séries que vous avez vues tous les deux, la part de cas où vous préférez la même.` : 'Classez quelques séries en commun pour voir votre taux d\'accord.'}</p>
       ${C.common.length >= 6 ? `<div><p class="kbd" style="margin-bottom:6px">Vos plus gros désaccords</p><div class="mvrow">${[...C.common].sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap)).slice(0, 4).map(e => `<button class="mvchip" data-open="${e.my}"><span class="${e.gap < 0 ? 'mv-up' : 'mv-dn'}">${e.gap < 0 ? 'toi ▲' : 'toi ▼'}</span> ${esc(e.t)}</button>`).join('')}</div></div>` : ''}</div>`;
-    const tabs = [['disc', 'À découvrir', C.disc.length], ['rank', 'Son classement', P.s.length + P.a.length], ['common', 'En commun', C.common.length], ['mine', 'Que toi', C.mine.length]];
+    const tabs = [['disc', 'À découvrir', C.disc.length], ['rank', 'Son classement', P.s.length + P.a.length], ['common', 'En commun', C.common.length], ['mine', 'Que toi', C.mine.length], ['duels', 'Duels', '']];
     h += `<div class="chips">${tabs.map(([k, n, c]) => `<button data-at="${k}" aria-pressed="${amiTab === k}">${n} <span class="muted">${c}</span></button>`).join('')}</div>`;
     const row = (e, i, right, sub) => `<li class="arow${i != null ? '' : ' nr'}">${i != null ? `<span class="rnum">${i}</span>` : ''}<button class="ainfo" data-cat="${e.c ? e.c.tm : ''}" aria-label="Voir la fiche">${artE(e)}</button><span class="rt"><b>${esc(e.t)}</b><span>${sub}</span></span>${right}</li>`;
     const score = x => `<span class="score">${fmtNote(x)}</span>`;
@@ -1250,14 +1263,16 @@ function renderAmis(){
       h += `<p class="kbd">Ses séries que tu n'as pas encore rangées, de sa préférée à la moins aimée. Dis si tu les as vues : les « vue » partent en duels dans ton propre classement.</p>`;
       const D0 = [...C.disc].sort((a, b) => b.nt - a.nt);
       h += D0.length ? `<ol class="alist">${D0.slice(0, 60).map(e => row(e, null, `<span class="abtn"><button class="btn sm no" data-x="no" data-k="${esc(String(e.k))}">Pas vue</button><button class="btn sm yes" data-x="yes" data-k="${esc(String(e.k))}">Vue</button></span>`,
-        `${esc(P.n)} : ${e.L ? `${fr(e.r + 1)}${e.L === 'a' ? ' animé' : ''} · ${fmtNote(e.nt)}` : 'pas finie'} · <button class="lnk" data-x="drop" data-k="${esc(String(e.k))}">pas finie</button>`)).join('')}</ol>${D0.length > 60 ? `<p class="kbd">Encore ${D0.length - 60} après celles-ci.</p>` : ''}`
+        `${esc(P.n)} : ${e.L ? `${fr(e.r + 1)}${e.L === 'a' ? ' animé' : ''} · ${fmtNote(e.nt)}` : 'pas finie'} · <button class="lnk" data-x="drop" data-k="${esc(String(e.k))}">pas finie</button>${e.c ? ` · <button class="lnk" data-w="${e.c.tm}">${(S.watch || []).includes(e.c.tm) ? 'dans À voir' : 'à voir'}</button>` : ''}`)).join('')}</ol>${D0.length > 60 ? `<p class="kbd">Encore ${D0.length - 60} après celles-ci.</p>` : ''}`
         : `<div class="empty"><b>Tout est rangé</b><span>Tu as déjà dit vue ou pas vue pour toutes ses séries.</span></div>`;
       const top = C.notSeen.filter(e => e.L).sort((a, b) => b.nt - a.nt).slice(0, 12);
-      if (top.length) h += `<div class="panel"><h3>Ses préférées que tu n'as pas vues</h3><p class="kbd">Des idées de séries à regarder.</p><ol class="alist">${top.map(e => row(e, null, score(e.nt), `${esc(P.n)} : ${fr(e.r + 1)} ${e.L === 'a' ? 'animé' : 'série'}${e.c && e.c.net ? ' · ' + esc(e.c.net) : ''}`)).join('')}</ol></div>`;
+      if (top.length) h += `<div class="panel"><h3>Ses préférées que tu n'as pas vues</h3><p class="kbd">Des idées de séries à regarder.</p><ol class="alist">${top.map(e => row(e, null, e.c ? `<button class="btn sm" data-w="${e.c.tm}">${(S.watch || []).includes(e.c.tm) ? '✓ À voir' : '+ À voir'}</button>` : score(e.nt), `${esc(P.n)} : ${fr(e.r + 1)} ${e.L === 'a' ? 'animé' : 'série'}${e.c && e.c.net ? ' · ' + esc(e.c.net) : ''}`)).join('')}</ol></div>`;
     } else if (amiTab === 'rank') {
       h += `<div class="seg lsw" role="group" style="align-self:flex-start">${['s', 'a'].map(L => `<button data-al="${L}" aria-pressed="${curList === L}">${LISTS[L].n}<span class="cnt">${(P[L] || []).length}</span></button>`).join('')}</div>`;
       const E = C.E.filter(e => e.L === curList);
       h += `<ol class="alist">${E.map(e => row(e, e.r + 1, score(e.nt), e.my ? myState(e.my) : e.no ? 'toi : pas vue' : 'pas encore rangée chez toi')).join('') || '<li class="muted">Rien ici.</li>'}</ol>`;
+    } else if (amiTab === 'duels') {
+      h += friendDuels(P, C);
     } else if (amiTab === 'common') {
       h += `<p class="kbd">Dans son ordre. À droite, sa note ; sous le titre, ta place et ta note.</p>`;
       h += `<ol class="alist">${C.common.sort((a, b) => (a.L === 'a') - (b.L === 'a') || a.r - b.r).map(e => row(e, e.r + 1, score(e.nt), myState(e.my))).join('') || '<li class="muted">Aucune série classée en commun pour l\'instant.</li>'}</ol>`;
@@ -1266,6 +1281,7 @@ function renderAmis(){
       h += `<ol class="alist">${C.mine.map(it => `<li class="arow"><span class="rnum">${FIT.rank[it.id] + 1}</span>${art(it, 'sm')}<span class="rt"><b>${esc(it.t)}</b><span>${LISTS[listOf(it.id)].one}</span></span>${score(noteOf(it.id))}</li>`).join('') || '<li class="muted">Rien.</li>'}</ol>`;
     }
     h += `<div class="row"><button class="btn ghost sm" id="ami-rm">Retirer le classement de ${esc(P.n)}</button></div>`;
+    }
   }
   const base = shareBase();
   h += `<div class="panel"><h3>Partager ton classement</h3>
@@ -1277,7 +1293,7 @@ function renderAmis(){
     ${base ? '' : '<p class="kbd">Ici le lien n\'est pas encore relié au site : copie le code, ton ami pourra le coller dans « Ajouter le classement d\'un ami ».</p>'}</div>
     <div class="panel"><h3>Ajouter le classement d'un ami</h3><p class="muted small">Ouvre le lien reçu, ou colle-le ici.</p>
     <textarea id="ami-in" placeholder="Colle le lien ou le code"></textarea><div class="row"><button class="btn" id="ami-go">Ajouter</button><span class="kbd" id="ami-msg"></span></div></div>`;
-  el.innerHTML = h; bindAmis(el); bindAccount(el); bindCat(el); twoCol(el, k => k.id === 'acct' || k.id === 'keeptips' || !!k.querySelector('#sh-go, #ami-go'));
+  el.innerHTML = h; bindAmis(el); bindAccount(el); bindCat(el); bindGroup(el); twoCol(el, k => k.id === 'acct' || k.id === 'keeptips' || !!k.querySelector('#sh-go, #ami-go'));
 }
 function bindAmis(el){
   el.querySelectorAll('[data-ami]').forEach(b => b.onclick = () => { amiSel = b.dataset.ami; try { localStorage.setItem('palmares:amisel', amiSel); } catch(e) {} renderAmis(); });
@@ -1580,7 +1596,7 @@ function renderCatSheet(tm){ const c = CAT_TM.get(tm); if (!c) { closeSheet(); r
   on('#cs-watch', () => { pushUndo(); const L = new Set(S.watch || []); w ? L.delete(tm) : L.add(tm); S.watch = [...L]; S.skipped = S.skipped.filter(k => k !== '#' + tm); save(); render(); toast(w ? 'Retirée de À voir' : 'Ajoutée à À voir'); });
   on('#cs-no', () => { pushUndo(); S.skipped.push('#' + tm); S.watch = (S.watch || []).filter(t => t !== tm); save(); closeSheet(); toast('Marquée « pas vue »'); });
 }
-function renderWatch(){ const el = $('#watch-panel'); if (!el) return; const L = (S.watch || []).map(t => CAT_TM.get(t)).filter(Boolean); el.hidden = !L.length; if (!L.length) { el.innerHTML = ''; return; }
+function renderWatch(){ const el = $('#watch-panel'); if (!el) return; const L = (S.watch || []).map(t => CAT_TM.get(t)).filter(Boolean); el.hidden = false; if (!L.length) { el.innerHTML = `<h3>À voir</h3><p class="muted small">Ta liste d'envies. Ajoute une série avec <b>+ À voir</b> : en mode Cartes ci-dessous, depuis sa fiche (le petit <b>i</b> sur les affiches), ou dans l'onglet Amis (« Ses préférées que tu n'as pas vues »).</p>`; return; }
   const sub = c => [c.x && c.x[0] ? 'IMDb ' + fmtNote(c.x[0] / 10) : '', c.x && DET ? c.x[5].slice(0, 3).map(i => DET.V[i]).join(', ') : ''].filter(Boolean).join(' · ');
   el.innerHTML = `<h3>À voir · ${L.length}</h3><p class="kbd">Tes envies, avec où les regarder en France.</p><div class="wlist">${L.map(c => `<div class="wl"><button class="gl" data-cat="${c.tm}">${art(c, 'sm')}<span><b>${esc(c.n)}</b><span class="kbd">${esc(sub(c))}</span></span></button><button class="btn sm yes" data-wy="${c.tm}">Vue</button></div>`).join('')}</div>`;
   bindCat(el);
@@ -1635,6 +1651,73 @@ async function shareTop(L, btn){
     else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Image enregistrée'); }
   } catch(e) { toast('Image impossible à créer'); }
   btn.disabled = false; btn.textContent = 'Partager mon top 10'; }
+
+/* ================= Entre amis : le groupe, les duels ================= */
+let amiMode = 'ami', grpScope = 'all', fd = {seen: new Set(), g: null, score: 0, tot: 0, streak: 0};
+try { amiMode = localStorage.getItem('palmares:amimode') || 'ami'; } catch(e) {}
+function meProfile(){ const P = myProfile(); P.n = (typeof myPseudo !== 'undefined' && myPseudo) || (S.me && S.me.n) || 'Toi'; P.me = true; return P; }
+function modeSeg(){ return `<div class="seg" role="group" aria-label="Affichage" style="align-self:flex-start"><button data-amode="ami" aria-pressed="${amiMode === 'ami'}">Un par un</button><button data-amode="groupe" aria-pressed="${amiMode === 'groupe'}">Le groupe</button></div>`; }
+/* Classement du groupe : note moyenne de ceux qui ont vu la série, ramenée vers la moyenne générale quand peu l'ont vue */
+function groupPanel(F){
+  const scopes = [['all', 'Tous mes amis']].concat(typeof cloudOn === 'function' && cloudOn() ? social.groups.map(g => ['g:' + g.id, g.name]) : []);
+  if (!scopes.some(s => s[0] === grpScope)) grpScope = 'all';
+  let ppl = F; if (grpScope.startsWith('g:')) { const g = social.groups.find(x => 'g:' + x.id === grpScope), mem = new Set(g ? g.members : []); ppl = F.filter(P => mem.has(P.id)); }
+  ppl = [meProfile(), ...ppl];
+  const L = curList, M = new Map();
+  for (const P of ppl) (P[L] || []).forEach(([k, nt]) => { let c = typeof k === 'number' ? CAT_TM.get(k) : null;
+    if (!c && typeof k === 'string') { const l = CAT_KEYS.get(norm(k)); if (l) c = CAT[l[0]]; }
+    const key = c ? 'c' + c.tm : 't' + norm(k); if (!M.has(key)) M.set(key, {c, t: c ? c.n : String(k), v: []}); M.get(key).v.push({n: P.n, me: !!P.me, nt: nt / 10}); });
+  const all = [...M.values()], cnt = all.reduce((a, e) => a + e.v.length, 0), mu = all.reduce((a, e) => a + e.v.reduce((s, x) => s + x.nt, 0), 0) / Math.max(1, cnt);
+  for (const e of all) { const s = e.v.reduce((a, x) => a + x.nt, 0); e.avg = s / e.v.length; e.sc = (s + 1.5 * mu) / (e.v.length + 1.5); e.sd = Math.sqrt(e.v.reduce((a, x) => a + (x.nt - e.avg) ** 2, 0) / e.v.length); }
+  const shared = all.filter(e => e.v.length >= 2), top = shared.slice().sort((a, b) => b.sc - a.sc).slice(0, 40), div = shared.filter(e => e.v.length >= 2).sort((a, b) => b.sd - a.sd).slice(0, 6);
+  const chips = e => e.v.slice().sort((a, b) => b.me - a.me).map(x => `<span${x.me ? ' class="me"' : ''}>${esc(x.me ? 'Toi' : x.n)} ${fmtNote(x.nt)}</span>`).join('');
+  const row = (e, i) => `<li class="arow${i == null ? ' nr' : ''}">${i != null ? `<span class="rnum">${i}</span>` : ''}<button class="ainfo" data-cat="${e.c ? e.c.tm : ''}" aria-label="Voir la fiche">${art(e.c || {t: e.t, nm: true}, 'sm')}</button><span class="rt"><b>${esc(e.t)}</b><span class="gchips vchips">${chips(e)}</span></span><span class="score">${fmtNote(e.avg)}</span></li>`;
+  return `${scopes.length > 1 ? `<div class="chips">${scopes.map(([k, n]) => `<button data-gscope="${k}" aria-pressed="${k === grpScope}">${esc(n)}</button>`).join('')}</div>` : ''}
+    <div class="panel"><div class="row between"><h3>Le palmarès du groupe</h3><div class="seg lsw" role="group">${['s', 'a'].map(k => `<button data-gl="${k}" aria-pressed="${curList === k}">${LISTS[k].n}</button>`).join('')}</div></div>
+      <p class="kbd">${ppl.length} personnes : ${ppl.map(p => esc(p.me ? 'toi' : p.n)).join(', ')}. Une série compte dès que deux personnes l'ont classée ; à droite la note moyenne, et le classement tient compte du nombre de personnes qui l'ont vue.</p>
+      ${top.length ? `<ol class="alist">${top.map((e, i) => row(e, i + 1)).join('')}</ol>` : '<div class="empty"><b>Pas encore de séries en commun</b><span>Il faut au moins deux personnes ayant classé la même série.</span></div>'}</div>
+    ${div.length ? `<div class="panel"><h3>Ce qui divise le groupe</h3><p class="kbd">Les plus grands écarts de notes entre vous.</p><ol class="alist">${div.map(e => row(e, null)).join('')}</ol></div>` : ''}`;
+}
+/* Duels entre amis : 1) vos désaccords, à trancher dans ton propre classement ; 2) devine laquelle il ou elle préfère */
+function fdPairs(C){ const cm = C.common, out = [];
+  for (let i = 0; i < cm.length; i++) for (let j = i + 1; j < cm.length; j++) { const A = cm[i], B = cm[j];
+    if (A.L !== B.L || listOf(A.my) !== listOf(B.my)) continue; const dm = FIT.rank[A.my] - FIT.rank[B.my], df = A.r - B.r;
+    if (dm * df < 0 && !proven(listOf(A.my), FIT.rank[A.my], FIT.rank[B.my])) out.push([A, B, Math.abs(dm) + Math.abs(df)]); }
+  return out.sort((a, b) => b[2] - a[2]); }
+function fdGuess(P){ const E = entries(P).filter(e => e.L && e.c); if (E.length < 4) return null;
+  for (let t = 0; t < 60; t++) { const A = E[Math.floor(Math.random() * E.length)], B = E[Math.floor(Math.random() * E.length)];
+    if (A !== B && A.L === B.L && Math.abs(A.r - B.r) >= 3) return Math.random() < .5 ? [A, B] : [B, A]; } return null; }
+function friendDuels(P, C){
+  const pairs = fdPairs(C).filter(([A, B]) => !fd.seen.has(P.id + A.my + B.my)), pr = pairs[0];
+  let h = `<div class="panel"><h3>Vos désaccords</h3>`;
+  if (!pr) h += `<p class="muted small">${C.common.length < 2 ? 'Classez quelques séries en commun pour voir vos désaccords.' : 'Aucun désaccord à trancher pour l\'instant. Vous êtes d\'accord sur l\'ordre de toutes vos séries en commun… ou presque.'}</p>`;
+  else { const [A, B] = FIT.rank[pr[0].my] < FIT.rank[pr[1].my] ? [pr[0], pr[1]] : [pr[1], pr[0]];   // A : ta préférée
+    h += `<p class="small">Tu mets <b>${esc(A.t)}</b> devant <b>${esc(B.t)}</b>. ${esc(P.n)} pense l'inverse. Qui a raison ?</p>
+      <div class="fdpair">${[A, B].map((e, k) => `<div><button class="ainfo" data-cat="${e.c ? e.c.tm : ''}">${artE(e)}</button><span class="kbd">toi ${fr(FIT.rank[e.my] + 1)} · ${esc(P.n)} ${fr(e.r + 1)}</span></div>`).join('<span class="vs2">VS</span>')}</div>
+      <div class="row"><button class="btn primary sm" data-fdk="keep" data-a="${A.my}" data-b="${B.my}">Je maintiens</button><button class="btn sm" data-fdk="flip" data-a="${A.my}" data-b="${B.my}">${esc(P.n)} a raison</button><button class="btn ghost sm" data-fdk="skip" data-a="${A.my}" data-b="${B.my}">Passer</button></div>
+      <p class="kbd">${pairs.length} désaccord${pairs.length > 1 ? 's' : ''} restant${pairs.length > 1 ? 's' : ''}. Ta réponse compte comme un duel dans ton classement.</p>`; }
+  h += '</div>';
+  if (!fd.g || fd.g.pid !== P.id) { const g = fdGuess(P); fd.g = g ? {pid: P.id, A: g[0], B: g[1], pick: null} : null; }
+  h += `<div class="panel"><div class="row between"><h3>Devine son choix</h3><span class="kbd">${fd.tot ? `${fd.score} / ${fd.tot}${fd.streak >= 3 ? ` · série de ${fd.streak} 🔥` : ''}` : ''}</span></div>`;
+  if (!fd.g) h += '<p class="muted small">Pas assez de séries dans son classement pour jouer.</p>';
+  else { const {A, B, pick} = fd.g, win = A.r < B.r ? A : B;
+    h += `<p class="small">Selon toi, laquelle ${esc(P.n)} met devant ?</p><div class="fdpair">${[A, B].map(e => `<div class="${pick ? (e === win ? 'ok' : 'ko') : ''}"><button class="ainfo fdg" data-fg="${e === A ? 'A' : 'B'}" ${pick ? 'disabled' : ''}>${artE(e)}</button><span class="small"><b>${esc(e.t)}</b></span>${pick ? `<span class="kbd">${fr(e.r + 1)} · ${fmtNote(e.nt)}</span>` : ''}</div>`).join('<span class="vs2">VS</span>')}</div>
+      ${pick ? `<p class="small">${pick === win ? '<b>Bien vu !</b>' : '<b>Raté.</b>'} ${esc(P.n)} met <b>${esc(win.t)}</b> devant.</p><div class="row"><button class="btn primary sm" data-fgn="1">Suivante</button></div>` : ''}`; }
+  return h + '</div>';
+}
+function bindGroup(el){
+  el.querySelectorAll('[data-amode]').forEach(b => b.onclick = () => { amiMode = b.dataset.amode; try { localStorage.setItem('palmares:amimode', amiMode); } catch(e) {} renderAmis(); });
+  el.querySelectorAll('[data-gscope]').forEach(b => b.onclick = () => { grpScope = b.dataset.gscope; renderAmis(); });
+  el.querySelectorAll('[data-gl]').forEach(b => b.onclick = () => setList(b.dataset.gl));
+  el.querySelectorAll('[data-w]').forEach(b => b.onclick = e => { e.stopPropagation(); const tm = +b.dataset.w, L = new Set(S.watch || []); pushUndo(); L.has(tm) ? L.delete(tm) : L.add(tm); S.watch = [...L]; save(); render(); toast(L.has(tm) ? 'Ajoutée à À voir' : 'Retirée de À voir'); });
+  el.querySelectorAll('[data-fdk]').forEach(b => b.onclick = () => { const a = b.dataset.a, bb = b.dataset.b, k = b.dataset.fdk; fd.seen.add(amiSel + a + bb); fd.seen.add(amiSel + bb + a);
+    if (k !== 'skip') { pushUndo(); const before = Object.assign({}, FIT.rank); if (k === 'keep') record(a, bb, 'w'); else record(bb, a, 'w'); repair(); refit(); save();
+      const mv = [a, bb].map(id => ({id, d: before[id] - FIT.rank[id]})).filter(x => x.d); toast(mv.length ? mv.map(x => `${S.items[x.id].t} ${x.d > 0 ? '▲' : '▼'} ${fr(FIT.rank[x.id] + 1)}`).join(' · ') : 'Noté. D\'autres duels maintiennent cet ordre : pour trancher, « Affiner sa place » depuis sa fiche'); }
+    render(); });
+  el.querySelectorAll('[data-fg]').forEach(b => b.onclick = () => { const g = fd.g; if (!g || g.pick) return; g.pick = b.dataset.fg === 'A' ? g.A : g.B; const win = g.A.r < g.B.r ? g.A : g.B;
+    fd.tot++; if (g.pick === win) { fd.score++; fd.streak++; } else fd.streak = 0; renderAmis(); });
+  el.querySelectorAll('[data-fgn]').forEach(b => b.onclick = () => { fd.g = null; renderAmis(); });
+}
 
 /* ================= Mise en page : deux colonnes sur ordinateur ================= */
 function twoCol(el, isSide){ const kids = [...el.children]; if (kids.length < 2) return;
