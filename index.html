@@ -64,7 +64,7 @@ p{margin:0}
 
 /* Tabs */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-block:8px}
+nav.tabs .wrap{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding-block:8px}
 nav.tabs button{border:0;background:transparent;border-radius:10px;padding:8px 4px;font-size:13px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
 nav.tabs button svg{width:22px;height:22px}
 nav.tabs button[aria-selected="true"]{color:var(--accent);background:var(--accent-soft)}
@@ -349,6 +349,31 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
 .awards{display:flex;flex-direction:column;gap:4px}
 .aw{font-size:13.5px;font-weight:600}
 #themes{margin-top:2px;max-width:340px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (min-width:700px){.tiles{grid-template-columns:repeat(3,1fr)}}
+.tile{border:1px solid var(--line);background:color-mix(in srgb,var(--accent) 6%,var(--surface));border-radius:14px;padding:10px 12px;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile b{font-family:var(--display);font-size:16px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+.tlist{list-style:none;margin:0;padding:0}
+.trow{width:100%;border:0;background:none;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(70px,1fr) 46px 26px;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);text-align:left;border-radius:8px}
+.trow:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.tn{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbar{position:relative;height:10px}
+.tbar::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line)}
+.tbar i{position:absolute;top:0;bottom:0;border-radius:3px}
+.tbar i.pos{background:var(--accent)} .tbar i.neg{background:color-mix(in srgb,var(--drop) 75%,var(--surface))}
+.tv{font-variant-numeric:tabular-nums;font-weight:700;font-size:13px;text-align:right}
+.tv.pos{color:var(--ink)} .tv.neg{color:var(--muted)}
+.trow+.tposters{display:flex;flex-wrap:wrap;gap:8px;padding:10px 4px 14px}
+.tposters button{border:0;background:none;padding:0;width:52px;display:flex;flex-direction:column;gap:3px;align-items:center;font-size:11px;font-weight:700;color:var(--muted)}
+.tposters .art{width:52px}
+.champs{display:grid;grid-template-columns:1fr;gap:6px}
+.champ,.gl{border:0;background:none;display:grid;grid-template-columns:38px 1fr;gap:10px;align-items:center;text-align:left;padding:6px 4px;border-radius:10px}
+.champ:hover,.gl:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.champ>span,.gl>span{display:flex;flex-direction:column;min-width:0}
+.champ b,.gl b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.glist{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+@media (min-width:1024px){ nav.tabs .wrap{display:flex} }
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -414,6 +439,7 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
   </section>
 
   <section data-view="rank" id="v-rank" hidden></section>
+  <section data-view="gouts" id="v-gouts" hidden></section>
   <section data-view="amis" id="v-amis" hidden></section>
 </main>
 
@@ -421,6 +447,7 @@ nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(i
   <button role="tab" data-tab="add" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Ajouter</button>
   <button role="tab" data-tab="duel" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/></svg><span>Duels<span class="badge" id="qbadge" hidden></span></span></button>
   <button role="tab" data-tab="rank" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Classement</button>
+  <button role="tab" data-tab="gouts" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Goûts</button>
   <button role="tab" data-tab="amis" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 14.8c1.6.8 2.7 2.5 3 5.2"/></svg>Amis</button>
 </div><div class="side-foot" id="side-foot"><div class="stats" id="side-stats"></div></div></nav>
 <div class="sheet-bg" id="sheet" hidden><div class="sheet-p" id="sheet-p" role="dialog" aria-modal="true"></div></div>
@@ -747,7 +774,7 @@ function go(v){
 document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab));
 function render(){ renderStats(); document.querySelectorAll('[data-view]').forEach(s => s.hidden = s.dataset.view !== view);
   document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === view));
-  if (view === 'duel') renderDuel(); if (view === 'add') { amisHint(); renderHits(); renderDisc(); } if (view === 'amis') renderAmis(); if (view === 'rank') renderRank(); if (sheetId) renderSheet(); }
+  if (view === 'duel') renderDuel(); if (view === 'add') { amisHint(); renderHits(); renderDisc(); } if (view === 'amis') renderAmis(); if (view === 'gouts') renderGouts(); if (view === 'rank') renderRank(); if (sheetId) renderSheet(); }
 function renderStats(){
   const ns = FIT.orders.s.length, na = FIT.orders.a.length, q = S.queue.length;
   const sy = {ok:['ok', acct ? 'En ligne' : 'Synchronisé'], wait:['','Connexion…'], slow:['err','Synchro lente'], err:['err','Hors ligne'], full:['err','Stockage plein'], local:['','Sur cet appareil']}[syncState];
@@ -1453,6 +1480,79 @@ function richOf(it){ const c = catOf(it); if (!c || !c.x) return '';
   if (cr.length) out.push(`<p class="small"><span class="kbd">Créée par</span> ${esc(cr.map(i => DET.P[i]).join(', '))}</p>`);
   if (rs && rs[1]) out.push(`<p class="small"><span class="kbd">Avec</span> ${esc(rs[1])}</p>`);
   return `<div class="rich">${out.join('')}</div>`; }
+
+/* ================= Goûts : ce que tu aimes le plus =================
+   Pour chaque genre, thème, créateur… : ta note moyenne sur les séries concernées, comparée à ta moyenne générale.
+   Les petits effectifs sont ramenés vers ta moyenne (comme si on ajoutait 3 séries « moyennes ») : une seule série ne suffit pas à faire un favori. */
+let gDim = 'g', gSort = 'love', gOpen = null;
+try { gDim = localStorage.getItem('palmares:gdim') || 'g'; } catch(e) {}
+const REGION = (() => { try { return new Intl.DisplayNames(['fr'], {type: 'region'}); } catch(e) { return null; } })();
+const DIMS = [['g', 'Genres', 2], ['k', 'Thèmes', 3], ['cr', 'Créateurs', 2], ['ca', 'Acteurs', 2], ['pv', 'Plateformes', 3], ['net', 'Chaînes', 2], ['pays', 'Pays', 2], ['dec', 'Époques', 2]];
+function featsOf(c){ const x = c.x || [], y = c.y;
+  return {g: genresOf(c),
+    k: DET ? (x[2] || []).map(i => DET.K[i][0]).filter(Boolean) : [], cr: DET ? (x[3] || []).map(i => DET.P[i]) : [], ca: DET ? (x[4] || []).map(i => DET.P[i]) : [],
+    pv: DET ? (x[5] || []).map(i => DET.V[i]) : [], net: c.net ? [c.net] : [],
+    pays: (x[9] || []).map(cc => (REGION && REGION.of(cc)) || cc), dec: y ? [y < 1990 ? 'Avant 1990' : 'Années ' + String(Math.floor(y / 10) * 10).slice(2)] : []}; }
+let tasteCache = null;
+function tasteData(){
+  const key = Object.keys(FIT.rank).length + ':' + !!DET + ':' + D.length; if (tasteCache && tasteCache.key === key) return tasteCache;
+  const its = Object.keys(FIT.rank).map(id => ({id, it: S.items[id], c: catOf(S.items[id]), n: noteOf(id)})).filter(o => o.c);
+  const mu = its.reduce((a, o) => a + o.n, 0) / Math.max(1, its.length), M = 3, dims = {};
+  for (const [d] of DIMS) dims[d] = new Map();
+  for (const o of its) { o.f = featsOf(o.c); for (const [d] of DIMS) for (const v of new Set(o.f[d])) { const m = dims[d]; if (!m.has(v)) m.set(v, {v, n: 0, s: 0, ids: []}); const e = m.get(v); e.n++; e.s += o.n; e.ids.push(o.id); } }
+  for (const [d] of DIMS) for (const e of dims[d].values()) { e.avg = e.s / e.n; e.adj = (e.s + M * mu) / (e.n + M); e.delta = e.adj - mu; }
+  return tasteCache = {key, its, mu, dims};
+}
+function renderGouts(){
+  const el = $('#v-gouts'), T = tasteData(), N = T.its.length;
+  let h = '<div><p class="eyebrow">Analyse</p><h2>Tes goûts</h2></div>';
+  if (N < 8) { el.innerHTML = h + `<div class="empty"><b>Encore un peu de duels</b><span>Classe au moins 8 séries pour voir ce que tu aimes le plus. Tu en as ${N}.</span></div>`; return; }
+  const minN = Object.fromEntries(DIMS.map(d => [d[0], d[2]]));
+  const best = d => [...T.dims[d].values()].filter(e => e.n >= minN[d]).sort((a, b) => b.adj - a.adj)[0];
+  const sign = x => (x >= 0 ? '+' : '−') + fmtNote(Math.abs(x));
+  // portrait
+  const tiles = [['g', 'Genre'], ['k', 'Thème'], ['cr', 'Créateur'], ['ca', 'Acteur ou actrice'], ['pv', 'Plateforme'], ['dec', 'Époque']].map(([d, lab]) => { const e = best(d);
+    return e ? `<button class="tile" data-gd="${d}" data-gv="${esc(e.v)}"><span class="kbd">${lab}</span><b>${esc(e.v)}</b><span class="kbd">${sign(e.delta)} · ${e.n} série${e.n > 1 ? 's' : ''}</span></button>` : ''; }).join('');
+  h += `<div class="panel" id="g-sum"><h3>En résumé</h3><p class="muted small">${N} séries classées, note moyenne ${fmtNote(T.mu)}. Ce qui fait le plus monter tes notes :</p><div class="tiles">${tiles}</div>${DET ? '' : '<p class="kbd">Chargement des thèmes, créateurs et acteurs…</p>'}</div>`;
+  // détail par dimension
+  const dimMin = minN[gDim], rows = [...T.dims[gDim].values()].filter(e => e.n >= (gSort === 'love' ? dimMin : 1))
+    .sort(gSort === 'love' ? (a, b) => b.adj - a.adj : gSort === 'hate' ? (a, b) => a.adj - b.adj : (a, b) => b.n - a.n || b.adj - a.adj).slice(0, 25);
+  const mx = Math.max(.5, ...rows.map(e => Math.abs(e.delta)));
+  h += `<div class="panel" id="g-dim"><div class="chips">${DIMS.map(([d, n]) => `<button data-dim="${d}" aria-pressed="${d === gDim}">${n}</button>`).join('')}</div>
+    <div class="row between"><div class="seg" role="group" aria-label="Tri"><button data-gs="love" aria-pressed="${gSort === 'love'}">Préférés</button><button data-gs="hate" aria-pressed="${gSort === 'hate'}">Moins aimés</button><button data-gs="n" aria-pressed="${gSort === 'n'}">Plus vus</button></div>
+    <span class="kbd">écart avec ta moyenne (${fmtNote(T.mu)})</span></div>
+    <ol class="tlist">${rows.map(e => { const w = Math.abs(e.delta) / mx * 50, open = gOpen === gDim + '|' + e.v;
+      return `<li><button class="trow" data-gv="${esc(e.v)}" aria-expanded="${open}"><span class="tn">${esc(e.v)}</span><span class="tbar"><i class="${e.delta >= 0 ? 'pos' : 'neg'}" style="${e.delta >= 0 ? 'left:50%' : `left:${50 - w}%`};width:${w}%"></i></span><span class="tv ${e.delta >= 0 ? 'pos' : 'neg'}">${sign(e.delta)}</span><span class="kbd">${e.n}</span></button>
+        ${open ? `<div class="tposters">${e.ids.slice().sort((a, b) => noteOf(b) - noteOf(a)).map(id => `<button data-open="${id}" title="${esc(S.items[id].t)}">${art(S.items[id], 'sm')}<span>${fmtNote(noteOf(id))}</span></button>`).join('')}</div>` : ''}</li>`; }).join('') || '<li class="muted small">Pas assez de séries pour cette catégorie.</li>'}</ol>
+    <p class="kbd">Touche une ligne pour voir tes séries concernées. Les catégories avec peu de séries sont ramenées vers ta moyenne.</p></div>`;
+  // palmarès par catégorie
+  const yr = o => o.c.y || 0, kw = o => o.f.k, is = g => o => o.f.g.includes(g), oc = cc => o => ((o.c.x || [])[9] || []).includes(cc);
+  const CATP = [['Drame', is('Drame')], ['Comédie', is('Comédie')], ['Science-fiction', is('Science-fiction')], ['Fantastique', is('Fantastique')], ['Policier', is('Policier')], ['Thriller', is('Thriller')], ['Horreur', is('Horreur')],
+    ['Animé japonais', o => o.c.f.includes('j')], ['Animation', o => o.c.f.includes('a') && !o.c.f.includes('j')], ['Mini-série', o => kw(o).includes('Mini-série')], ['Sitcom', o => kw(o).includes('Sitcom')],
+    ['Française', o => oc('FR')(o) || o.c.f.includes('f')], ['Britannique', o => oc('GB')(o) || o.c.f.includes('u')], ['Américaine', oc('US')], ['Coréenne', oc('KR')],
+    ['Avant 2000', o => yr(o) && yr(o) < 2000], ['Années 2000', o => yr(o) >= 2000 && yr(o) < 2010], ['Années 2010', o => yr(o) >= 2010 && yr(o) < 2020], ['Années 2020', o => yr(o) >= 2020]];
+  const champs = CATP.map(([lab, f]) => { const L = T.its.filter(f); if (L.length < 3) return ''; const w = L.sort((a, b) => b.n - a.n)[0];
+    return `<button class="champ" data-open="${w.id}">${art(w.it, 'sm')}<span><span class="kbd">${lab}</span><b>${esc(w.it.t)}</b><span class="kbd">${fmtNote(w.n)} · devant ${L.length - 1} autre${L.length > 2 ? 's' : ''}</span></span></button>`; }).join('');
+  h += `<div class="panel" id="g-champ"><h3>Ton palmarès par catégorie</h3><div class="champs">${champs}</div></div>`;
+  // toi et IMDb
+  if (DET) { const P = T.its.filter(o => o.c.x && o.c.x[0] && o.c.x[1] >= 500);
+    if (P.length >= 8) { const pct = (arr, k) => { const s = arr.slice().sort((a, b) => k(a) - k(b)); const m = new Map(); s.forEach((o, i) => m.set(o.id, i / (s.length - 1))); return m; };
+      const pm = pct(P, o => o.n), pi = pct(P, o => o.c.x[0]); P.forEach(o => o.dd = pm.get(o.id) - pi.get(o.id));
+      const n = P.length, mx = P.reduce((a, o) => a + o.n, 0) / n, my = P.reduce((a, o) => a + o.c.x[0], 0) / n;
+      let sxy = 0, sxx = 0, syy = 0; for (const o of P) { sxy += (o.n - mx) * (o.c.x[0] - my); sxx += (o.n - mx) ** 2; syy += (o.c.x[0] - my) ** 2; }
+      const r = sxy / Math.sqrt(sxx * syy || 1), word = r > .6 ? 'très proches' : r > .35 ? 'assez proches' : r > .15 ? 'un peu liés' : 'presque sans rapport';
+      const li = o => `<button class="gl" data-open="${o.id}">${art(o.it, 'sm')}<span><b>${esc(o.it.t)}</b><span class="kbd">toi ${fmtNote(o.n)} · IMDb ${fmtNote(o.c.x[0] / 10)}</span></span></button>`;
+      h += `<div class="panel" id="g-imdb"><h3>Toi et IMDb</h3><p class="small">Tes notes et celles d'IMDb sont <b>${word}</b> (corrélation ${fmtNote(r)}, sur ${n} séries). Ta série moyenne a ${fmtNote(my / 10)} sur IMDb.</p>
+        <p class="kbd">Tu les places bien plus haut que le public</p><div class="glist">${P.slice().sort((a, b) => b.dd - a.dd).slice(0, 5).map(li).join('')}</div>
+        <p class="kbd">Le public les aime bien plus que toi</p><div class="glist">${P.slice().sort((a, b) => a.dd - b.dd).slice(0, 5).map(li).join('')}</div></div>`; } }
+  el.innerHTML = h;
+  el.querySelectorAll('[data-dim]').forEach(b => b.onclick = () => { gDim = b.dataset.dim; gOpen = null; try { localStorage.setItem('palmares:gdim', gDim); } catch(e) {} renderGouts(); });
+  el.querySelectorAll('[data-gs]').forEach(b => b.onclick = () => { gSort = b.dataset.gs; gOpen = null; renderGouts(); });
+  el.querySelectorAll('.trow').forEach(b => b.onclick = () => { const k = gDim + '|' + b.dataset.gv; gOpen = gOpen === k ? null : k; renderGouts(); });
+  el.querySelectorAll('.tile').forEach(b => b.onclick = () => { gDim = b.dataset.gd; gSort = 'love'; gOpen = gDim + '|' + b.dataset.gv; renderGouts(); $('#g-dim').scrollIntoView({behavior: 'smooth', block: 'start'}); });
+  el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openSheet(b.dataset.open));
+  twoCol(el, k => k.id === 'g-champ' || k.id === 'g-imdb');
+}
 
 /* ================= Mise en page : deux colonnes sur ordinateur ================= */
 function twoCol(el, isSide){ const kids = [...el.children]; if (kids.length < 2) return;
