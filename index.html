@@ -247,6 +247,8 @@ nav.tabs button{font-size:12px}
 .srow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
 .srow>span:first-child{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .grp{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+.chk{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.chk input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
 #v-amis input:not([type=file]):not([type=checkbox]){width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:11px 12px;font:inherit;font-size:16px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -1028,7 +1030,7 @@ try { amiTab = localStorage.getItem('palmares:amitab') || 'disc'; amiSel = local
 function friends(){ const off = new Set(S.amisOff || []), by = new Map();
   const add = (P, pri) => { if (!P || off.has(P.id) || (S.me && P.id === S.me.id) || (acct && P.id === acct.id)) return;
     const k = String(P.n || '').toLowerCase(), cur = by.get(k); if (cur && (cur.pri > pri || (cur.pri === pri && (cur.P.at || 0) >= (P.at || 0)))) return; by.set(k, {P, pri}); };
-  if (!cloudOn()) Object.values(BAKED).forEach(P => add(P, 0)); Object.values(S.amis || {}).forEach(P => add(P, 1)); Object.values(CLOUD).forEach(P => add(P, 2));
+  if (!cloudOn()) Object.values(BAKED).forEach(P => add(P, 0)); Object.values(S.amis || {}).forEach(P => add(P, 1)); Object.values(CLOUD).forEach(P => { if (!P.pub || (S.amisPub || []).includes(P.id)) add(P, 2); });
   return [...by.values()].map(x => x.P).sort((a, b) => a.n.localeCompare(b.n)); }
 const keyOf = it => it.tm != null ? it.tm : it.t;
 function myProfile(){
@@ -1166,7 +1168,7 @@ async function initAmis(){
    Connexion par code reçu par mail. Le classement complet (séries, duels, historique) est gardé en ligne,
    lié à l'adresse mail ; une photo du classement est lisible par les amis acceptés et les membres des groupes. */
 const SB_URL = 'https://jpydahkrhsewvtobgjjg.supabase.co', SB_KEY = 'sb_publishable_gn7aI06zdFTSUnLfpj1okg_TaflqlpV';
-let sb = null, acct = null, myPseudo = null, CLOUD = {}, social = {req: [], out: [], fr: [], groups: [], names: {}};
+let sb = null, acct = null, myPseudo = null, myPublic = false, CLOUD = {}, social = {req: [], out: [], fr: [], groups: [], names: {}};
 let cloudT = null, cloudBusy = false, cloudAgain = false, loginBusy = false, authStep = 'mail', authMail = '', authMsg = '';
 const cloudOn = () => !!(sb && acct);
 const cloudData = () => ({format: 'palmares-v2', s: S, d: D.map(enc), h: HIST});
@@ -1205,7 +1207,7 @@ async function cloudPull(first){
 async function onLogin(u){
   if (loginBusy || (acct && acct.id === u.id)) return; loginBusy = true;
   acct = {id: u.id, mail: u.email}; setSync('wait');
-  try { const {data} = await sb.from('profiles').select('pseudo').eq('id', u.id).maybeSingle(); myPseudo = data ? data.pseudo : null;
+  try { const {data} = await sb.from('profiles').select('pseudo,is_public').eq('id', u.id).maybeSingle(); myPseudo = data ? data.pseudo : null; myPublic = !!(data && data.is_public);
     if (myPseudo) S.me = {id: acct.id, n: myPseudo};
     await cloudPull(true); await joinPending(); await loadSocial(); }
   catch(e) { setSync('err'); }
@@ -1224,7 +1226,8 @@ async function loadSocial(){
     out: F.filter(x => x.status === 'pending' && x.a === acct.id).map(x => x.b),
     fr: F.filter(x => x.status === 'accepted').map(other),
     groups: G.map(x => ({id: x.id, name: x.name, invite: x.invite, members: (x.group_members || []).map(m => m.user_id)}))};
-  CLOUD = {}; for (const x of RK) { if (x.user_id === acct.id || !x.profile) continue; const P = Object.assign({}, x.profile, {id: x.user_id, n: names[x.user_id] || x.profile.n, at: Date.parse(x.updated_at) || x.profile.at, cloud: true}); P.a = P.a || []; P.p = P.p || []; CLOUD[P.id] = P; }
+  const rel = new Set(social.fr); social.groups.forEach(g => g.members.forEach(id => rel.add(id)));
+  CLOUD = {}; for (const x of RK) { if (x.user_id === acct.id || !x.profile) continue; const P = Object.assign({}, x.profile, {id: x.user_id, n: names[x.user_id] || x.profile.n, at: Date.parse(x.updated_at) || x.profile.at, cloud: true, pub: !rel.has(x.user_id)}); P.a = P.a || []; P.p = P.p || []; CLOUD[P.id] = P; }
 }
 async function joinPending(){ let code = null; try { code = localStorage.getItem('palmares:join'); } catch(e) {} if (!code || !cloudOn()) return;
   const {data, error} = await sb.rpc('join_group', {code}); try { localStorage.removeItem('palmares:join'); } catch(e) {}
@@ -1247,13 +1250,16 @@ function accountPanel(){
   const li = (id, btns) => `<li class="srow"><span>${esc(nameOf(id))}</span><span class="row">${btns}</span></li>`;
   return `<div class="panel" id="acct"><div class="row between"><h3>${esc(myPseudo)}</h3><button class="btn ghost sm" id="a-out">Se déconnecter</button></div>
     <p class="kbd">${esc(acct.mail || '')} · classement sauvegardé en ligne</p>
+    <label class="chk"><input type="checkbox" id="a-pub" ${myPublic ? 'checked' : ''}><span><b>Classement public</b><br><span class="kbd">${myPublic ? 'Visible par tous les comptes connectés.' : 'Visible seulement par tes amis et les membres de tes groupes.'}</span></span></label>
     ${social.req.length ? `<div><p class="kbd" style="margin-bottom:4px">Demandes d'ami</p><ul class="slist">${social.req.map(id => li(id, `<button class="btn sm yes" data-acc="${id}">Accepter</button><button class="btn sm ghost" data-del="${id}">Refuser</button>`)).join('')}</ul></div>` : ''}
     <div class="field"><label for="a-fr">Ajouter un ami (adresse mail ou pseudo)</label><div class="row" style="flex-wrap:nowrap"><input id="a-fr" autocomplete="off" style="flex:1;min-width:0"><button class="btn sm" id="a-fr-go">Demander</button></div><span class="kbd" id="a-fr-msg">${esc(authMsg)}</span></div>
     ${social.out.length ? `<p class="kbd">En attente de réponse : ${social.out.map(id => esc(nameOf(id))).join(', ')}</p>` : ''}
     ${social.fr.length ? `<details><summary class="small">Mes amis · ${social.fr.length}</summary><ul class="slist">${social.fr.map(id => li(id, `<button class="btn sm ghost" data-del="${id}">Retirer</button>`)).join('')}</ul></details>` : ''}
     <div><p class="kbd" style="margin-bottom:4px">Groupes</p>
       ${social.groups.map(g => `<div class="grp"><div class="row between"><b>${esc(g.name)}</b><span class="row"><button class="btn sm" data-inv="${g.id}">Copier l'invitation</button><button class="btn sm ghost" data-quit="${g.id}">Quitter</button></span></div><span class="kbd">${g.members.map(id => id === acct.id ? 'toi' : esc(nameOf(id))).join(', ')}</span></div>`).join('') || '<p class="kbd">Aucun groupe. Crée-en un et envoie le lien d\'invitation : tous les membres voient les classements des autres.</p>'}
-      <div class="row" style="flex-wrap:nowrap;margin-top:8px"><input id="a-g" placeholder="Nom du groupe" maxlength="60" style="flex:1;min-width:0"><button class="btn sm" id="a-g-go">Créer</button></div></div></div>`;
+      <div class="row" style="flex-wrap:nowrap;margin-top:8px"><input id="a-g" placeholder="Nom du groupe" maxlength="60" style="flex:1;min-width:0"><button class="btn sm" id="a-g-go">Créer</button></div></div>
+    ${(() => { const pub = Object.values(CLOUD).filter(P => P.pub), pins = new Set(S.amisPub || []); if (!pub.length) return '';
+      return `<details><summary class="small">Classements publics · ${pub.length}</summary><ul class="slist">${pub.sort((a, b) => a.n.localeCompare(b.n)).map(P => `<li class="srow"><span>${esc(P.n)} <span class="kbd">${(P.s || []).length + (P.a || []).length} séries</span></span><button class="btn sm ${pins.has(P.id) ? 'ghost' : ''}" data-pin="${P.id}">${pins.has(P.id) ? 'Masquer' : 'Voir'}</button></li>`).join('')}</ul></details>`; })()}</div>`;
 }
 function bindAccount(el){
   const on = (s, f) => { const e = el.querySelector(s); if (e) e.onclick = f; };
@@ -1272,6 +1278,10 @@ function bindAccount(el){
     if (error) { authMsg = error.code === '23505' ? 'Ce pseudo est déjà pris.' : 'Erreur : ' + error.message; renderAmis(); return; }
     myPseudo = ps; S.me = {id: acct.id, n: ps}; authMsg = ''; save(); await loadSocial(); render(); }));
   on('#a-out', async () => { await sb.auth.signOut(); });
+  const pb = el.querySelector('#a-pub'); if (pb) pb.onchange = async () => { const v = pb.checked; pb.disabled = true;
+    const {error} = await sb.from('profiles').update({is_public: v}).eq('id', acct.id); pb.disabled = false;
+    if (error) { pb.checked = !v; toast('Réglage impossible : ' + error.message); return; } myPublic = v; toast(v ? 'Ton classement est public' : 'Ton classement est privé'); renderAmis(); };
+  el.querySelectorAll('[data-pin]').forEach(b => b.onclick = () => { const id = b.dataset.pin, L = new Set(S.amisPub || []); L.has(id) ? L.delete(id) : L.add(id); S.amisPub = [...L]; if (L.has(id)) amiSel = id; save(); render(); });
   on('#a-fr-go', e => busy(e.target, async () => { const t = $('#a-fr').value.trim(); if (!t) return;
     const {data, error} = await sb.rpc('request_friend', {target: t});
     authMsg = error ? 'Erreur : ' + error.message : {envoyee: 'Demande envoyée.', acceptee: 'Vous êtes maintenant amis.', introuvable: 'Personne avec ce mail ou ce pseudo (il faut s\'être connecté au moins une fois).', toi: 'C\'est toi !'}[data] || data;
@@ -1293,7 +1303,7 @@ async function initCloud(){
   sb = supabase.createClient(SB_URL, SB_KEY, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: true}});
   $('#stats').style.cursor = 'pointer'; $('#stats').onclick = () => go('amis');
   sb.auth.onAuthStateChange((ev, s) => {
-    if (ev === 'SIGNED_OUT') { acct = null; myPseudo = null; CLOUD = {}; social = {req: [], out: [], fr: [], groups: [], names: {}}; setSync('local'); render(); }
+    if (ev === 'SIGNED_OUT') { acct = null; myPseudo = null; myPublic = false; CLOUD = {}; social = {req: [], out: [], fr: [], groups: [], names: {}}; setSync('local'); render(); }
     else if (s && s.user && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) setTimeout(() => onLogin(s.user), 0); });
   let joinCode = null; try { joinCode = localStorage.getItem('palmares:join'); } catch(e) {}
   if (joinCode) sb.auth.getSession().then(({data}) => { if (!data.session) toast('Connecte-toi (onglet Amis) pour rejoindre le groupe'); });
