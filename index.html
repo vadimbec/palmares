@@ -1,5 +1,5 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#F1F2F7" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0D0F1D" media="(prefers-color-scheme: dark)">
+<!doctype html><html lang="fr" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08090D" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#08090D" media="(prefers-color-scheme: dark)">
 <meta name="description" content="Classe tes séries par duels et compare ton classement avec tes amis.">
 <link rel="icon" href="icon.svg"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon.png"><meta name="apple-mobile-web-app-title" content="Palmarès">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -250,6 +250,97 @@ nav.tabs button{font-size:12px}
 .chk{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
 .chk input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
 #v-amis input:not([type=file]):not([type=checkbox]){width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:11px 12px;font:inherit;font-size:16px}
+/* ================= Refonte « Cinéma » ================= */
+:root[data-theme="dark"]{
+  --bg:#08090D; --surface:#13151C; --sunk:#0D0E13; --ink:#F3F1EC; --muted:#9094A5; --line:#23262F;
+  --accent:#E8B04B; --accent-ink:#1A1206; --accent-soft:#2A2113;
+  --love:#FF7A5C; --good:#3CC7B0; --meh:#8F93A6; --drop:#F0627A; --up:#4FD48A; color-scheme:dark }
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(90% 45% at 50% -8%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 70%)}
+.panel{background:color-mix(in srgb,var(--surface) 90%,transparent);border-radius:18px}
+h2{font-size:28px;font-weight:800;letter-spacing:-.03em}
+.eyebrow{color:var(--accent)}
+.btn{border-radius:12px;transition:border-color .15s,filter .15s,transform .1s}
+.btn:hover:not(:disabled){border-color:color-mix(in srgb,var(--ink) 28%,var(--line))}
+.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn:active:not(:disabled){transform:scale(.98)}
+.chips button[aria-pressed="true"],.seg button[aria-pressed="true"],.tiersel button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chips button:hover,.seg button:hover{color:var(--ink)}
+header.top{background:color-mix(in srgb,var(--bg) 76%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom-color:color-mix(in srgb,var(--line) 60%,transparent)}
+body::before{background:color-mix(in srgb,var(--bg) 76%,transparent)}
+.brand small{color:var(--accent)}
+nav.tabs{background:color-mix(in srgb,var(--surface) 78%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+nav.tabs button[aria-selected="true"]{background:transparent;color:var(--accent)}
+nav.tabs button[aria-selected="true"] svg{filter:drop-shadow(0 0 8px color-mix(in srgb,var(--accent) 55%,transparent))}
+.side-brand,.side-foot{display:none}
+.art{border-radius:12px;box-shadow:0 14px 30px -18px rgba(0,0,0,.95)}
+.art.sm{border-radius:6px;box-shadow:none}
+.bd{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;border-radius:inherit}
+.bd .art{position:absolute;left:-15%;top:-15%;width:130%;height:130%;max-width:none;aspect-ratio:auto;border-radius:0;filter:blur(44px) saturate(1.5);opacity:.55;box-shadow:none}
+.bd::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 10%,transparent) 0%,var(--bg) 95%)}
+.bd.duo .art{width:70%;height:120%;top:-10%}
+.bd.duo .art:first-child{left:-12%}.bd.duo .art:last-child{left:42%}
+.podium{position:relative;padding:22px 14px 16px;border-radius:20px;overflow:hidden;background:var(--surface);border:1px solid var(--line)}
+.podium>button{position:relative;z-index:1}
+.podium .pr{color:var(--accent)}
+.podium .p1 .art{box-shadow:0 0 0 2px var(--accent),0 20px 44px -18px rgba(0,0,0,.95)}
+.sheet-p{position:relative;overflow-x:hidden}
+.sheet-p>.bd{position:absolute;inset:0 0 auto 0;height:440px;border-radius:0}
+.sheet-p>:not(.bd){position:relative;z-index:1}
+.duel{isolation:isolate}
+.duel>.bd{inset:-70px -60px -40px;border-radius:0;overflow:visible;-webkit-mask-image:radial-gradient(closest-side,#000 45%,transparent);mask-image:radial-gradient(closest-side,#000 45%,transparent)}
+.duel>.bd::after{display:none}
+.bd.duo .art{opacity:.42}
+.duel>button{position:relative;z-index:1}
+.duel>button .art{box-shadow:0 24px 50px -22px rgba(0,0,0,.95)}
+.vs{background:var(--accent);color:var(--accent-ink);box-shadow:0 0 0 4px var(--bg)}
+.ritem>button{border-bottom-color:color-mix(in srgb,var(--line) 70%,transparent);border-radius:10px;padding:8px 6px;transition:background .12s}
+.ritem>button:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.ritem:nth-child(-n+10) .rnum{color:var(--accent)}
+.score{background:color-mix(in srgb,var(--accent) 13%,var(--surface))}
+.result{background:color-mix(in srgb,var(--accent) 11%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
+.tierpick button{border-radius:14px;transition:border-color .15s,background .15s}
+.tierpick button:hover{background:color-mix(in srgb,var(--ink) 5%,var(--surface))}
+.gcell .art{transition:transform .15s,opacity .15s}
+.gcell:hover .art{transform:translateY(-2px)}
+.toast{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.empty{border-color:color-mix(in srgb,var(--line) 80%,transparent);border-radius:18px}
+.desk{display:none}
+.cols,.mc,.sc{display:contents}
+
+@media (min-width:1024px){
+  .desk{display:revert}
+  header.top{display:none}
+  body::before{display:none}
+  nav.tabs{top:0;bottom:0;right:auto;width:240px;border-top:0;border-right:1px solid var(--line);padding:30px 14px 22px;display:flex;flex-direction:column;gap:30px;background:color-mix(in srgb,var(--surface) 55%,var(--bg))}
+  nav.tabs .wrap{display:flex;flex-direction:column;gap:4px;padding:0;margin:0;max-width:none}
+  nav.tabs button{flex-direction:row;justify-content:flex-start;gap:12px;padding:11px 14px;font-size:15px;border-radius:12px}
+  nav.tabs button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+  nav.tabs button[aria-selected="true"]{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+  nav.tabs .badge{margin-left:auto}
+  .side-brand{display:block;padding:0 14px;font-size:26px}
+  .side-foot{display:block;margin-top:auto;padding:12px 14px;border-radius:12px;cursor:pointer}
+  .side-foot:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+  .side-foot .stats{margin:0;text-align:left;display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+  main.wrap{max-width:none;margin:0 0 0 240px;padding:40px 48px 72px}
+  main.wrap>section{max-width:1240px;margin-inline:auto;width:100%}
+  h2{font-size:36px}
+  .toast{bottom:28px;left:calc(50% + 120px)}
+  .cols{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:32px;align-items:start}
+  .cols.one{grid-template-columns:minmax(0,1fr)}
+  .mc,.sc{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .mc>*,.sc>*{flex-shrink:0}
+  .sc{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow-y:auto;scrollbar-width:thin}
+  main.wrap>#v-duel{max-width:860px}
+  .duel{max-width:660px;margin-inline:auto;width:100%;gap:22px}
+  .solo{grid-template-columns:200px 1fr}
+  .grid,.wall{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px}
+  .deck{height:440px}.deck .card{width:270px}
+  .ritem>button{grid-template-columns:48px 44px 1fr auto;padding:10px 10px}
+  .rnum{font-size:22px}
+  .sheet-bg{justify-content:flex-end;align-items:stretch}
+  .sheet-p{max-width:560px;max-height:none;height:100%;border-radius:22px 0 0 22px;padding:30px 30px 36px}
+  .dhead{grid-template-columns:160px 1fr}
+}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -317,12 +408,12 @@ nav.tabs button{font-size:12px}
   <section data-view="amis" id="v-amis" hidden></section>
 </main>
 
-<nav class="tabs" aria-label="Sections"><div class="wrap" role="tablist">
+<nav class="tabs" aria-label="Sections"><div class="side-brand brand">Palmarès<small>Séries</small></div><div class="wrap" role="tablist">
   <button role="tab" data-tab="add" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Ajouter</button>
   <button role="tab" data-tab="duel" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/></svg><span>Duels<span class="badge" id="qbadge" hidden></span></span></button>
   <button role="tab" data-tab="rank" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Classement</button>
   <button role="tab" data-tab="amis" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 14.8c1.6.8 2.7 2.5 3 5.2"/></svg>Amis</button>
-</div></nav>
+</div><div class="side-foot" id="side-foot"><div class="stats" id="side-stats"></div></div></nav>
 <div class="sheet-bg" id="sheet" hidden><div class="sheet-p" id="sheet-p" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="file" accept="image/*" hidden>
 <input type="file" id="bkfile" accept=".json,application/json,text/plain" hidden>
@@ -649,6 +740,7 @@ function renderStats(){
   const ns = FIT.orders.s.length, na = FIT.orders.a.length, q = S.queue.length;
   const sy = {ok:['ok', acct ? 'En ligne' : 'Synchronisé'], wait:['','Connexion…'], slow:['err','Synchro lente'], err:['err','Hors ligne'], full:['err','Stockage plein'], local:['','Sur cet appareil']}[syncState];
   $('#stats').innerHTML = `<div><b>${ns}</b> série${ns>1?'s':''} · <b>${na}</b> animé${na>1?'s':''} · <b>${q}</b> en attente</div><div class="sync ${sy[0]}"><i></i>${sy[1]}</div>`;
+  const ss = $('#side-stats'); if (ss) ss.innerHTML = $('#stats').innerHTML;
   const b = $('#qbadge'); b.hidden = !q; b.textContent = q;
 }
 
@@ -793,10 +885,10 @@ function renderDuel(){
       focus: [`Affinage · encore ${R.left}`, `Autour de « ${esc(S.items[R.forced]?.t || '')} ».`],
       flow: ['Affinage continu', nU ? `${nU} ${LISTS[R.L].pl} dont la place n'est pas encore prouvée. Les moins comparées passent en premier.` : 'Toutes les places sont prouvées. Les duels servent maintenant de contrôle.']}[R.mode];
     el.innerHTML = `${R.mode === 'check' ? resultCard() : ''}<div class="row between" style="align-items:flex-end"><div><p class="eyebrow">${head[0]}${R.mode === 'flow' && R.done ? ` · ${R.done} fait${R.done > 1 ? 's' : ''}` : ''}</p><h2>Tu préfères laquelle ?</h2></div>${R.mode === 'flow' ? listSwitch() : `<span class="pill">${LISTS[R.L].n}</span>`}</div>
-      <div class="duel">${duelCard(a, 'cA', lab(a))}${duelCard(b, 'cB', lab(b))}<span class="vs">VS</span></div>
+      <div class="duel"><div class="bd duo" aria-hidden="true">${art(a, 'big')}${art(b, 'big')}</div>${duelCard(a, 'cA', lab(a))}${duelCard(b, 'cB', lab(b))}<span class="vs">VS</span></div>
       <div class="row"><button class="btn" id="tie">Impossible de choisir</button><button class="btn" id="pass">Passer</button>
         <button class="btn ghost" id="stop">${R.mode === 'check' ? 'Classer la suivante' : R.mode === 'flow' ? 'Pause' : 'Terminer'}</button><button class="btn ghost sm" id="u" ${undo.length ? '' : 'disabled'}>Annuler</button></div>
-      <p class="kbd">${head[1]} Clavier : ← → choisir, ↓ égalité, ↑ passer.</p>`;
+      <p class="kbd">${head[1]}<span class="desk"> Clavier : ← → choisir, ↓ égalité, ↑ passer.</span></p>`;
     $('#cA').onclick = () => refineAnswer(0); $('#cB').onclick = () => refineAnswer(1); $('#tie').onclick = () => refineAnswer('d'); $('#pass').onclick = () => refineAnswer('skip');
     $('#stop').onclick = () => { if (R.mode === 'flow') paused = true; refine = null; render(); }; $('#u').onclick = popUndo; bindListSwitch(el); return;
   }
@@ -833,7 +925,7 @@ function renderDuel(){
         <button data-t="meh"><b>Bof</b><span>${cnt('meh')} déjà</span></button>
         <button data-t="drop"><b>Pas finie</b><span>Mise de côté</span></button>
         <button data-t="auto" style="grid-column:1/-1;border-left:5px solid var(--accent)"><b>Laisse les duels décider</b><span>Recherche sur tout le classement, 1 ou 2 duels de plus</span></button>
-      </div><p class="kbd">Clavier : 1 2 3 4, 5 pour les duels seuls</p>${ctrl}`;
+      </div><p class="kbd desk">Clavier : 1 2 3 4, 5 pour les duels seuls</p>${ctrl}`;
     el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => pickTier(b.dataset.t));
     el.querySelectorAll('[data-an]').forEach(b => b.onclick = () => { const v = b.dataset.an === '1'; if (!!it.an === v) return; it.an = v; save(); render(); });
   } else {
@@ -1120,7 +1212,7 @@ function renderAmis(){
     ${base ? '' : '<p class="kbd">Ici le lien n\'est pas encore relié au site : copie le code, ton ami pourra le coller dans « Ajouter le classement d\'un ami ».</p>'}</div>
     <div class="panel"><h3>Ajouter le classement d'un ami</h3><p class="muted small">Ouvre le lien reçu, ou colle-le ici.</p>
     <textarea id="ami-in" placeholder="Colle le lien ou le code"></textarea><div class="row"><button class="btn" id="ami-go">Ajouter</button><span class="kbd" id="ami-msg"></span></div></div>`;
-  el.innerHTML = h; bindAmis(el); bindAccount(el);
+  el.innerHTML = h; bindAmis(el); bindAccount(el); twoCol(el, k => k.id === 'acct' || k.id === 'keeptips' || !!k.querySelector('#sh-go, #ami-go'));
 }
 function bindAmis(el){
   el.querySelectorAll('[data-ami]').forEach(b => b.onclick = () => { amiSel = b.dataset.ami; try { localStorage.setItem('palmares:amisel', amiSel); } catch(e) {} renderAmis(); });
@@ -1311,6 +1403,13 @@ async function initCloud(){
   render();
 }
 
+/* ================= Mise en page : deux colonnes sur ordinateur ================= */
+function twoCol(el, isSide){ const kids = [...el.children]; if (kids.length < 2) return;
+  const cols = document.createElement('div'), mc = document.createElement('div'), sc = document.createElement('aside');
+  cols.className = 'cols'; mc.className = 'mc'; sc.className = 'sc';
+  kids.slice(1).forEach((k, i) => { k.style.order = i + 1; (isSide(k) ? sc : mc).appendChild(k); });
+  cols.append(mc); if (sc.children.length) cols.append(sc); else cols.classList.add('one'); el.appendChild(cols); }
+const backdrop = (o, cls = '') => o ? `<div class="bd ${cls}" aria-hidden="true">${art(o, 'big')}</div>` : '';
 /* ================= Vue Classement ================= */
 let rankMode = 'list', rankFilter = '', movRef = 'visit';
 try { rankMode = localStorage.getItem('palmares:rank') || 'list'; movRef = localStorage.getItem('palmares:movref') || 'visit'; } catch(e) {}
@@ -1342,7 +1441,7 @@ function renderRank(){
   if (!o.length) { el.innerHTML = h + `<div class="empty"><b>Rien de classé dans ${LISTS[L].n.toLowerCase()} pour l'instant</b><span>${L === 'a' ? 'Les animés japonais du catalogue arrivent ici automatiquement. Pour une autre série, ouvre sa fiche et choisis « Animé ».' : 'Chaque série placée par les duels apparaît ici, avec sa place et sa note.'}</span></div>` + tools(); bindRank(); return; }
   const nU = o.filter(id => widthOf(id) > 0).length;
   h += `<div class="row"><button class="btn" id="ref" ${o.length < 2 ? 'disabled' : ''}>Affiner</button><span class="kbd">${nU ? `${nU} place${nU > 1 ? 's' : ''} sur ${o.length} pas encore prouvée${nU > 1 ? 's' : ''}` : 'Toutes les places sont prouvées par tes duels'}</span></div>`;
-  if (o.length >= 3 && !rankFilter) h += `<div class="podium">${[1,0,2].map(r => { const it = S.items[o[r]]; return `<button data-open="${it.id}" class="p${r+1}"><span class="pr">${fr(r+1)}</span>${art(it, 'big')}<span class="pt">${esc(it.t)}</span></button>`; }).join('')}</div>`;
+  if (o.length >= 3 && !rankFilter) h += `<div class="podium">${backdrop(S.items[o[0]])}${[1,0,2].map(r => { const it = S.items[o[r]]; return `<button data-open="${it.id}" class="p${r+1}"><span class="pr">${fr(r+1)}</span>${art(it, 'big')}<span class="pt">${esc(it.t)}</span></button>`; }).join('')}</div>`;
   if (o.length > 12) h += `<input type="search" id="rf" placeholder="Filtrer le classement" value="${esc(rankFilter)}">`;
   const f = norm(rankFilter); const vis = o.map((id, i) => [id, i]).filter(([id]) => !f || norm(S.items[id].t).includes(f));
   const mvTag = id => { if (!ref) return ''; const d = mv.get(id); if (d == null) return '<small class="mv-up">new</small>'; return d ? `<small class="${d > 0 ? 'mv-up' : 'mv-dn'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</small>` : ''; };
@@ -1353,7 +1452,7 @@ function renderRank(){
   h += `<div class="row between"><div class="seg" role="group" aria-label="Affichage"><button data-rm="list" aria-pressed="${rankMode === 'list'}">Liste</button><button data-rm="wall" aria-pressed="${rankMode === 'wall'}">Mur</button></div></div>`;
   h += evolution(L, ref, mv);
   if (S.dropped.length) h += `<div class="panel"><h3>Pas finies · ${S.dropped.length}</h3><p class="muted small">Hors classement. Touche une série pour la classer quand même.</p><div class="droplist">${S.dropped.map(id => `<button data-drop="${id}">${esc(S.items[id].t)}</button>`).join('')}</div></div>`;
-  el.innerHTML = h + explain() + tools(); bindRank(); bindChart(el); bindBk(el);
+  el.innerHTML = h + explain() + tools(); bindRank(); bindChart(el); bindBk(el); twoCol(el, k => k.matches('.podium, .panel'));
 }
 /* Panneau Évolution : mouvements depuis une date + stabilité jour après jour */
 function evolution(L, ref, mv){
@@ -1472,7 +1571,7 @@ function bkReminder(){ if (mainRef || cloudOn() || Object.keys(S.items).length <
 const inApp = /FBAN|FBAV|Instagram|Line\/|GSA\/|Snapchat|; wv\)/.test(navigator.userAgent);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 function keepTips(){ if (window.claude || cloudOn()) return '';
-  return `<div class="panel"><details${Object.keys(S.items).length < 5 ? ' open' : ''}><summary>Garder ton classement</summary><div class="explain" style="margin-top:12px">
+  return `<div class="panel" id="keeptips"><details${Object.keys(S.items).length < 5 ? ' open' : ''}><summary>Garder ton classement</summary><div class="explain" style="margin-top:12px">
     ${inApp ? '<p><b>Tu es dans le navigateur d\'une appli</b> (Gmail, Messenger, Instagram…). Ouvre plutôt ce lien dans Safari ou Chrome : ce qui est fait ici risque d\'être perdu.</p>' : ''}
     <p><b>Tout est enregistré dans ce navigateur, sur cet appareil,</b> à chaque action : tu peux fermer et revenir des jours après. Pas de compte, rien n'est envoyé.</p>
     <p><b>Utilise toujours le même navigateur.</b> Pas de navigation privée. ${standalone ? 'Tu utilises l\'appli installée : continue depuis l\'écran d\'accueil.' : 'Le mieux : <b>ajoute la page à l\'écran d\'accueil</b> dès maintenant (iPhone : Partager › Sur l\'écran d\'accueil ; Android : menu ⋮ › Ajouter à l\'écran d\'accueil) et ouvre-la toujours depuis là. Sur iPhone, l\'icône et Safari ne partagent pas leurs données : choisis l\'un des deux.'}</p>
@@ -1502,7 +1601,7 @@ function renderSheet(){
   const lo = FIT.lo[it.id], hi = FIT.hi[it.id];
   const nr = ranked && hi > lo ? ` · entre ${fmtNote(noteOf(o[hi]))} et ${fmtNote(noteOf(o[lo]))}` : '';
   const pts = ranked ? itemHistory(it.id, L) : [];
-  $('#sheet-p').innerHTML = `
+  $('#sheet-p').innerHTML = backdrop(it) + `
     <div class="dhead">${art(it, 'big')}<div>
       <h2>${esc(it.t)}</h2>${ficheOf(it)}${amisLine(it)}
       ${ranked ? `<span class="big-note">${fmtNote(noteOf(it.id))}<span class="muted" style="font-size:16px">/10</span></span>
@@ -1558,6 +1657,8 @@ function manual(id, dir){
 
 /* ================= Démarrage ================= */
 const loaded = localLoad(); if (loaded) { S = loaded.s; D = loaded.d; }
+twoCol($('#v-add'), k => k.classList.contains('panel') && !k.querySelector('#q, #disc'));
+$('#side-foot').onclick = () => go('amis');
 renderCats(); setMode(discMode); refit(); render(); connect(); initAmis(); initCloud();
 </script>
 
