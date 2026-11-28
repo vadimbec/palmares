@@ -2,6 +2,7 @@
 <meta name="theme-color" content="#F1F2F7" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0D0F1D" media="(prefers-color-scheme: dark)">
 <meta name="description" content="Classe tes séries par duels et compare ton classement avec tes amis.">
 <link rel="icon" href="icon.svg"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon.png"><meta name="apple-mobile-web-app-title" content="Palmarès">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}</style>
 <title>Palmarès Séries</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -242,6 +243,11 @@ details[open] summary::after{content:"–"}
 .abtn .btn{padding:6px 8px}
 .lnk{border:0;background:none;padding:0;color:var(--muted);text-decoration:underline;font-size:12px}
 nav.tabs button{font-size:12px}
+.slist{list-style:none;margin:0;padding:0}
+.srow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.srow>span:first-child{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.grp{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+#v-amis input:not([type=file]):not([type=checkbox]){width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:11px 12px;font:inherit;font-size:16px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -480,7 +486,7 @@ let mainRef = null, duelCol = null, histCol = null, v1Ref = null, saveT = null, 
 const dirty = new Set(); const CH = 1500;
 const markDuel = i => dirty.add(Math.floor(i / CH));
 let persistAsked = false;
-function save(){ S.updatedAt = Date.now(); mainDirty = true; snapTake(); localSave(); schedule();
+function save(){ S.updatedAt = Date.now(); mainDirty = true; snapTake(); localSave(); schedule(); cloudSchedule();
   if (!persistAsked && !mainRef) { persistAsked = true; try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e) {} } }
 function schedule(ms = 700){ if (!mainRef) return; clearTimeout(saveT); saveT = setTimeout(flush, ms); }
 async function flush(){
@@ -639,7 +645,7 @@ function render(){ renderStats(); document.querySelectorAll('[data-view]').forEa
   if (view === 'duel') renderDuel(); if (view === 'add') { amisHint(); renderHits(); renderDisc(); } if (view === 'amis') renderAmis(); if (view === 'rank') renderRank(); if (sheetId) renderSheet(); }
 function renderStats(){
   const ns = FIT.orders.s.length, na = FIT.orders.a.length, q = S.queue.length;
-  const sy = {ok:['ok','Synchronisé'], wait:['','Connexion…'], slow:['err','Synchro lente'], err:['err','Hors ligne'], full:['err','Stockage plein'], local:['','Sur cet appareil']}[syncState];
+  const sy = {ok:['ok', acct ? 'En ligne' : 'Synchronisé'], wait:['','Connexion…'], slow:['err','Synchro lente'], err:['err','Hors ligne'], full:['err','Stockage plein'], local:['','Sur cet appareil']}[syncState];
   $('#stats').innerHTML = `<div><b>${ns}</b> série${ns>1?'s':''} · <b>${na}</b> animé${na>1?'s':''} · <b>${q}</b> en attente</div><div class="sync ${sy[0]}"><i></i>${sy[1]}</div>`;
   const b = $('#qbadge'); b.hidden = !q; b.textContent = q;
 }
@@ -1019,9 +1025,11 @@ function recoScores(){
 const SITE = "https://vadimbec.github.io/palmares/";
 let BAKED = {}, amiSel = null, amiTab = 'disc';
 try { amiTab = localStorage.getItem('palmares:amitab') || 'disc'; amiSel = localStorage.getItem('palmares:amisel'); } catch(e) {}
-function friends(){ const off = new Set(S.amisOff || []), out = {};
-  for (const P of [...Object.values(BAKED), ...Object.values(S.amis || {})]) { if (!P || off.has(P.id) || (S.me && P.id === S.me.id)) continue; if (!out[P.id] || (out[P.id].at || 0) < (P.at || 0)) out[P.id] = P; }
-  return Object.values(out).sort((a, b) => a.n.localeCompare(b.n)); }
+function friends(){ const off = new Set(S.amisOff || []), by = new Map();
+  const add = (P, pri) => { if (!P || off.has(P.id) || (S.me && P.id === S.me.id) || (acct && P.id === acct.id)) return;
+    const k = String(P.n || '').toLowerCase(), cur = by.get(k); if (cur && (cur.pri > pri || (cur.pri === pri && (cur.P.at || 0) >= (P.at || 0)))) return; by.set(k, {P, pri}); };
+  Object.values(BAKED).forEach(P => add(P, 0)); Object.values(S.amis || {}).forEach(P => add(P, 1)); Object.values(CLOUD).forEach(P => add(P, 2));
+  return [...by.values()].map(x => x.P).sort((a, b) => a.n.localeCompare(b.n)); }
 const keyOf = it => it.tm != null ? it.tm : it.t;
 function myProfile(){
   if (!S.me) S.me = {id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), n: ''};
@@ -1066,7 +1074,7 @@ function compare(P){ const E = entries(P), common = E.filter(e => e.my && !e.dro
 
 function renderAmis(){
   const el = $('#v-amis'), F = friends(); if (!F.some(P => P.id === amiSel)) amiSel = F[0] ? F[0].id : null;
-  let h = `<div><p class="eyebrow">Entre amis</p><h2>Comparer vos classements</h2></div>` + keepTips();
+  let h = `<div><p class="eyebrow">Entre amis</p><h2>Comparer vos classements</h2></div>` + accountPanel() + keepTips();
   if (!F.length) h += `<div class="empty"><b>Aucun classement d'ami pour l'instant</b><span>Envoie ton lien à tes amis (ci-dessous) et colle le leur quand ils te le renvoient.</span></div>`;
   else {
     if (F.length > 1) h += `<div class="chips">${F.map(P => `<button data-ami="${esc(P.id)}" aria-pressed="${P.id === amiSel}">${esc(P.n)}</button>`).join('')}</div>`;
@@ -1110,7 +1118,7 @@ function renderAmis(){
     ${base ? '' : '<p class="kbd">Ici le lien n\'est pas encore relié au site : copie le code, ton ami pourra le coller dans « Ajouter le classement d\'un ami ».</p>'}</div>
     <div class="panel"><h3>Ajouter le classement d'un ami</h3><p class="muted small">Ouvre le lien reçu, ou colle-le ici.</p>
     <textarea id="ami-in" placeholder="Colle le lien ou le code"></textarea><div class="row"><button class="btn" id="ami-go">Ajouter</button><span class="kbd" id="ami-msg"></span></div></div>`;
-  el.innerHTML = h; bindAmis(el);
+  el.innerHTML = h; bindAmis(el); bindAccount(el);
 }
 function bindAmis(el){
   el.querySelectorAll('[data-ami]').forEach(b => b.onclick = () => { amiSel = b.dataset.ami; try { localStorage.setItem('palmares:amisel', amiSel); } catch(e) {} renderAmis(); });
@@ -1151,6 +1159,145 @@ async function initAmis(){
     try { history.replaceState(null, '', location.pathname + location.search); } catch(e) {} }
   let stored = null; try { stored = localStorage.getItem('palmares:view'); } catch(e) {}
   if (!stored && !Object.keys(S.items).length && friends().length) view = 'amis';
+  render();
+}
+
+/* ================= Compte en ligne (Supabase) =================
+   Connexion par code reçu par mail. Le classement complet (séries, duels, historique) est gardé en ligne,
+   lié à l'adresse mail ; une photo du classement est lisible par les amis acceptés et les membres des groupes. */
+const SB_URL = 'https://jpydahkrhsewvtobgjjg.supabase.co', SB_KEY = 'sb_publishable_gn7aI06zdFTSUnLfpj1okg_TaflqlpV';
+let sb = null, acct = null, myPseudo = null, CLOUD = {}, social = {req: [], out: [], fr: [], groups: [], names: {}};
+let cloudT = null, cloudBusy = false, cloudAgain = false, loginBusy = false, authStep = 'mail', authMail = '', authMsg = '';
+const cloudOn = () => !!(sb && acct);
+const cloudData = () => ({format: 'palmares-v2', s: S, d: D.map(enc), h: HIST});
+function cloudSchedule(){ if (!cloudOn()) return; clearTimeout(cloudT); cloudT = setTimeout(() => { cloudT = null; cloudPush(); }, 1500); }
+async function cloudPush(){
+  if (!cloudOn()) return; if (cloudBusy) { cloudAgain = true; return; } cloudBusy = true;
+  try { const now = new Date().toISOString();
+    const r1 = await sb.from('states').upsert({user_id: acct.id, data: JSON.parse(JSON.stringify(cloudData())), updated_at: now}); if (r1.error) throw r1.error;
+    if (myPseudo) { const P = myProfile(); P.id = acct.id; P.n = myPseudo;
+      const r2 = await sb.from('rankings').upsert({user_id: acct.id, profile: P, updated_at: now}); if (r2.error) throw r2.error; }
+    setSync('ok'); }
+  catch(e) { setSync('err'); }
+  cloudBusy = false; if (cloudAgain) { cloudAgain = false; cloudPush(); }
+}
+function applyRemote(r){
+  for (const e of Array.isArray(r.h) ? r.h : []) if (e && e.day) { const i = HIST.findIndex(h => h.day === e.day); if (i < 0) HIST.push(e); else if ((e.t || 0) > (HIST[i].t || 0)) HIST[i] = e; }
+  HIST.sort((x, y) => x.day < y.day ? -1 : 1); histLocalSave();
+  applyState(r.s, (r.d || []).map(dec)); setSync('ok');
+}
+/* Au premier passage, la version la plus récente gagne ; l'autre est gardée de côté dans ce navigateur. */
+async function cloudPull(first){
+  if (!cloudOn() || cloudT || cloudBusy) return;
+  const {data, error} = await sb.from('states').select('data').eq('user_id', acct.id).maybeSingle();
+  if (error) { setSync('err'); return; }
+  const local = Object.keys(S.items).length;
+  if (!data || !data.data || !data.data.s) { if (local) cloudPush(); else setSync('ok'); return; }
+  const r = data.data, ru = r.s.updatedAt || 0;
+  if (!local || ru > (S.updatedAt || 0)) {
+    if (first && local) try { localStorage.setItem('palmares:avant-compte', JSON.stringify(cloudData())); } catch(e) {}
+    applyRemote(r);
+  } else if (ru < (S.updatedAt || 0)) {
+    if (first) try { localStorage.setItem('palmares:compte-avant', JSON.stringify(r)); } catch(e) {}
+    cloudPush();
+  } else setSync('ok');
+}
+async function onLogin(u){
+  if (loginBusy || (acct && acct.id === u.id)) return; loginBusy = true;
+  acct = {id: u.id, mail: u.email}; setSync('wait');
+  try { const {data} = await sb.from('profiles').select('pseudo').eq('id', u.id).maybeSingle(); myPseudo = data ? data.pseudo : null;
+    if (myPseudo) S.me = {id: acct.id, n: myPseudo};
+    await cloudPull(true); await joinPending(); await loadSocial(); }
+  catch(e) { setSync('err'); }
+  loginBusy = false; render();
+}
+async function loadSocial(){
+  if (!cloudOn()) return;
+  const [f, g, rk] = await Promise.all([sb.from('friendships').select('a,b,status'), sb.from('groups').select('id,name,invite,owner,group_members(user_id)'), sb.from('rankings').select('user_id,profile,updated_at')]);
+  const F = f.data || [], G = g.data || [], RK = rk.data || [];
+  const ids = new Set(); F.forEach(x => ids.add(x.a === acct.id ? x.b : x.a)); G.forEach(x => (x.group_members || []).forEach(m => ids.add(m.user_id))); RK.forEach(x => ids.add(x.user_id));
+  ids.delete(acct.id); const names = {};
+  if (ids.size) { const {data} = await sb.from('profiles').select('id,pseudo').in('id', [...ids]); (data || []).forEach(p => names[p.id] = p.pseudo); }
+  const other = x => x.a === acct.id ? x.b : x.a;
+  social = {names,
+    req: F.filter(x => x.status === 'pending' && x.b === acct.id).map(x => x.a),
+    out: F.filter(x => x.status === 'pending' && x.a === acct.id).map(x => x.b),
+    fr: F.filter(x => x.status === 'accepted').map(other),
+    groups: G.map(x => ({id: x.id, name: x.name, invite: x.invite, members: (x.group_members || []).map(m => m.user_id)}))};
+  CLOUD = {}; for (const x of RK) { if (x.user_id === acct.id || !x.profile) continue; const P = Object.assign({}, x.profile, {id: x.user_id, n: names[x.user_id] || x.profile.n, at: Date.parse(x.updated_at) || x.profile.at, cloud: true}); P.a = P.a || []; P.p = P.p || []; CLOUD[P.id] = P; }
+}
+async function joinPending(){ let code = null; try { code = localStorage.getItem('palmares:join'); } catch(e) {} if (!code || !cloudOn()) return;
+  const {data, error} = await sb.rpc('join_group', {code}); try { localStorage.removeItem('palmares:join'); } catch(e) {}
+  toast(error || !data ? 'Ce lien de groupe n\'est plus valide' : `Tu as rejoint le groupe « ${data} »`); }
+const nameOf = id => social.names[id] || 'Quelqu\'un';
+const inviteLink = g => (shareBase() || SITE) + '#groupe=' + g.invite;
+
+function accountPanel(){
+  if (!sb) return '';
+  if (!acct) return `<div class="panel" id="acct"><h3>Ton compte</h3>
+    <p class="muted small">Connecte-toi avec ton adresse mail : ton classement est gardé en ligne et tu le retrouves sur tous tes appareils, même dans des mois. Tu peux aussi ajouter des amis et créer des groupes. Pas de mot de passe, tu reçois un code par mail.</p>
+    ${authStep === 'mail' ? `<div class="field"><label for="a-mail">Adresse mail</label><input id="a-mail" type="email" autocomplete="email" inputmode="email" value="${esc(authMail)}" placeholder="toi@exemple.fr"></div>
+      <div class="row"><button class="btn primary" id="a-send">Recevoir un code</button><span class="kbd">${esc(authMsg)}</span></div>`
+    : `<div class="field"><label for="a-code">Code reçu à ${esc(authMail)}</label><input id="a-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456"></div>
+      <div class="row"><button class="btn primary" id="a-ok">Valider</button><button class="btn ghost sm" id="a-back">Changer d'adresse</button><span class="kbd">${esc(authMsg)}</span></div>
+      <p class="kbd">Pas reçu ? Regarde dans les spams, ou attends une minute et redemande.</p>`}</div>`;
+  if (!myPseudo) return `<div class="panel" id="acct"><h3>Choisis ton pseudo</h3><p class="muted small">C'est le nom que tes amis verront, et ils pourront te trouver avec.</p>
+    <div class="field"><label for="a-ps">Pseudo</label><input id="a-ps" maxlength="30" placeholder="Pseudo" value="${esc(S.me && S.me.n || '')}"></div>
+    <div class="row"><button class="btn primary" id="a-ps-ok">Enregistrer</button><span class="kbd">${esc(authMsg)}</span></div></div>`;
+  const li = (id, btns) => `<li class="srow"><span>${esc(nameOf(id))}</span><span class="row">${btns}</span></li>`;
+  return `<div class="panel" id="acct"><div class="row between"><h3>${esc(myPseudo)}</h3><button class="btn ghost sm" id="a-out">Se déconnecter</button></div>
+    <p class="kbd">${esc(acct.mail || '')} · classement sauvegardé en ligne</p>
+    ${social.req.length ? `<div><p class="kbd" style="margin-bottom:4px">Demandes d'ami</p><ul class="slist">${social.req.map(id => li(id, `<button class="btn sm yes" data-acc="${id}">Accepter</button><button class="btn sm ghost" data-del="${id}">Refuser</button>`)).join('')}</ul></div>` : ''}
+    <div class="field"><label for="a-fr">Ajouter un ami (adresse mail ou pseudo)</label><div class="row" style="flex-wrap:nowrap"><input id="a-fr" autocomplete="off" style="flex:1;min-width:0"><button class="btn sm" id="a-fr-go">Demander</button></div><span class="kbd" id="a-fr-msg">${esc(authMsg)}</span></div>
+    ${social.out.length ? `<p class="kbd">En attente de réponse : ${social.out.map(id => esc(nameOf(id))).join(', ')}</p>` : ''}
+    ${social.fr.length ? `<details><summary class="small">Mes amis · ${social.fr.length}</summary><ul class="slist">${social.fr.map(id => li(id, `<button class="btn sm ghost" data-del="${id}">Retirer</button>`)).join('')}</ul></details>` : ''}
+    <div><p class="kbd" style="margin-bottom:4px">Groupes</p>
+      ${social.groups.map(g => `<div class="grp"><div class="row between"><b>${esc(g.name)}</b><span class="row"><button class="btn sm" data-inv="${g.id}">Copier l'invitation</button><button class="btn sm ghost" data-quit="${g.id}">Quitter</button></span></div><span class="kbd">${g.members.map(id => id === acct.id ? 'toi' : esc(nameOf(id))).join(', ')}</span></div>`).join('') || '<p class="kbd">Aucun groupe. Crée-en un et envoie le lien d\'invitation : tous les membres voient les classements des autres.</p>'}
+      <div class="row" style="flex-wrap:nowrap;margin-top:8px"><input id="a-g" placeholder="Nom du groupe" maxlength="60" style="flex:1;min-width:0"><button class="btn sm" id="a-g-go">Créer</button></div></div></div>`;
+}
+function bindAccount(el){
+  const on = (s, f) => { const e = el.querySelector(s); if (e) e.onclick = f; };
+  const busy = async (btn, f) => { if (btn) btn.disabled = true; try { await f(); } finally { if (btn) btn.disabled = false; } };
+  on('#a-send', e => busy(e.target, async () => { authMail = $('#a-mail').value.trim(); if (!/^\S+@\S+\.\S+$/.test(authMail)) { authMsg = 'Adresse invalide.'; renderAmis(); return; }
+    const {error} = await sb.auth.signInWithOtp({email: authMail, options: {shouldCreateUser: true, emailRedirectTo: shareBase() || SITE}});
+    if (error) { authMsg = /rate|seconds/i.test(error.message) ? 'Trop de demandes, réessaie dans une minute.' : 'Envoi impossible : ' + error.message; renderAmis(); return; }
+    authStep = 'code'; authMsg = 'Code envoyé.'; renderAmis(); $('#a-code')?.focus(); }));
+  on('#a-back', () => { authStep = 'mail'; authMsg = ''; renderAmis(); });
+  on('#a-ok', e => busy(e.target, async () => { const token = $('#a-code').value.replace(/\D/g, '');
+    const {data, error} = await sb.auth.verifyOtp({email: authMail, token, type: 'email'});
+    if (error || !data.user) { authMsg = 'Code incorrect ou expiré.'; renderAmis(); return; }
+    authMsg = ''; authStep = 'mail'; await onLogin(data.user); toast('Connecté'); }));
+  on('#a-ps-ok', e => busy(e.target, async () => { const ps = $('#a-ps').value.trim(); if (ps.length < 2 || ps.includes('@')) { authMsg = 'Au moins 2 caractères, sans @.'; renderAmis(); return; }
+    const {error} = await sb.from('profiles').upsert({id: acct.id, pseudo: ps});
+    if (error) { authMsg = error.code === '23505' ? 'Ce pseudo est déjà pris.' : 'Erreur : ' + error.message; renderAmis(); return; }
+    myPseudo = ps; S.me = {id: acct.id, n: ps}; authMsg = ''; save(); await loadSocial(); render(); }));
+  on('#a-out', async () => { await sb.auth.signOut(); });
+  on('#a-fr-go', e => busy(e.target, async () => { const t = $('#a-fr').value.trim(); if (!t) return;
+    const {data, error} = await sb.rpc('request_friend', {target: t});
+    authMsg = error ? 'Erreur : ' + error.message : {envoyee: 'Demande envoyée.', acceptee: 'Vous êtes maintenant amis.', introuvable: 'Personne avec ce mail ou ce pseudo (il faut s\'être connecté au moins une fois).', toi: 'C\'est toi !'}[data] || data;
+    await loadSocial(); render(); }));
+  el.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => busy(b, async () => { await sb.from('friendships').update({status: 'accepted'}).eq('a', b.dataset.acc).eq('b', acct.id); await loadSocial(); render(); }));
+  el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => busy(b, async () => { const o = b.dataset.del;
+    await sb.from('friendships').delete().or(`and(a.eq.${acct.id},b.eq.${o}),and(a.eq.${o},b.eq.${acct.id})`); await loadSocial(); render(); }));
+  el.querySelectorAll('[data-inv]').forEach(b => b.onclick = () => { const g = social.groups.find(x => x.id === b.dataset.inv); if (g) copy(inviteLink(g), 'Lien d\'invitation copié'); });
+  el.querySelectorAll('[data-quit]').forEach(b => b.onclick = () => { if (b.dataset.c !== '1') { b.dataset.c = '1'; b.textContent = 'Confirmer'; return; }
+    busy(b, async () => { await sb.from('group_members').delete().eq('group_id', b.dataset.quit).eq('user_id', acct.id); await loadSocial(); render(); }); });
+  on('#a-g-go', e => busy(e.target, async () => { const n = $('#a-g').value.trim(); if (!n) return;
+    const {data, error} = await sb.rpc('create_group', {gname: n}); if (error) { toast('Création impossible'); return; }
+    await loadSocial(); render(); const g = social.groups.find(x => x.invite === data); if (g) copy(inviteLink(g), 'Groupe créé, lien d\'invitation copié'); }));
+}
+async function initCloud(){
+  if (window.claude || !window.supabase) return;
+  if (location.hash.includes('groupe=')) { const m = location.hash.match(/groupe=([A-Za-z0-9]+)/); if (m) try { localStorage.setItem('palmares:join', m[1]); } catch(e) {}
+    try { history.replaceState(null, '', location.pathname + location.search); } catch(e) {} view = 'amis'; }
+  sb = supabase.createClient(SB_URL, SB_KEY, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: true}});
+  $('#stats').style.cursor = 'pointer'; $('#stats').onclick = () => go('amis');
+  sb.auth.onAuthStateChange((ev, s) => {
+    if (ev === 'SIGNED_OUT') { acct = null; myPseudo = null; CLOUD = {}; social = {req: [], out: [], fr: [], groups: [], names: {}}; setSync('local'); render(); }
+    else if (s && s.user && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) setTimeout(() => onLogin(s.user), 0); });
+  let joinCode = null; try { joinCode = localStorage.getItem('palmares:join'); } catch(e) {}
+  if (joinCode) sb.auth.getSession().then(({data}) => { if (!data.session) toast('Connecte-toi (onglet Amis) pour rejoindre le groupe'); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && cloudOn()) { cloudPull(false); loadSocial().then(render); } });
   render();
 }
 
@@ -1266,7 +1413,7 @@ function explain(){ return `<div class="panel"><details><summary>Comment c'est c
 </div></details></div>`; }
 function tools(){ return `<div class="panel"><details id="tools"><summary>Sauvegarde et export</summary>
   <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
-    <div class="row"><button class="btn primary sm" id="bk-file">Enregistrer une sauvegarde (fichier)</button><button class="btn sm" id="bk-load">Ouvrir un fichier de sauvegarde</button></div>
+    <div class="row" ${window.claude ? "hidden" : ""}><button class="btn primary sm" id="bk-file">Enregistrer une sauvegarde (fichier)</button><button class="btn sm" id="bk-load">Ouvrir un fichier de sauvegarde</button></div>
     <div class="row"><button class="btn sm" id="cp-list">Copier les classements (texte)</button><button class="btn sm" id="cp-json">Copier la sauvegarde</button></div>
     <textarea id="imp" placeholder="Colle ici une sauvegarde (ancienne ou nouvelle version) pour la restaurer"></textarea>
     <div class="row"><button class="btn sm" id="imp-go">Restaurer cette sauvegarde</button><span class="kbd" id="imp-msg"></span></div>
@@ -1308,13 +1455,13 @@ async function backupFile(){ const name = 'palmares-' + dayKey() + '.json', blob
 $('#bkfile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const t = await f.text();
   toolsOpen = true; go('rank'); const ta = $('#imp'); if (ta) { ta.value = t; $('#imp-go').click(); ta.scrollIntoView({block: 'center'}); } };
 /* Rappel : seulement hors Claude (pas de synchro), dès 10 séries, puis tous les 3 jours */
-function bkReminder(){ if (mainRef || Object.keys(S.items).length < 10) return '';
+function bkReminder(){ if (mainRef || cloudOn() || Object.keys(S.items).length < 10) return '';
   let last = 0; try { last = +localStorage.getItem('palmares:bk') || 0; } catch(e) {}
   if (Date.now() - last < 3 * 864e5) return '';
   return `<div class="result" style="grid-template-columns:1fr auto"><span class="small">Ton classement est gardé dans ce navigateur, sur cet appareil. ${last ? 'Dernière sauvegarde il y a ' + Math.floor((Date.now() - last) / 864e5) + ' jours.' : 'Pas encore de sauvegarde.'}</span><button class="btn primary sm" data-bk="1">Sauvegarder</button></div>`; }
 const inApp = /FBAN|FBAV|Instagram|Line\/|GSA\/|Snapchat|; wv\)/.test(navigator.userAgent);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-function keepTips(){ if (window.claude) return '';
+function keepTips(){ if (window.claude || cloudOn()) return '';
   return `<div class="panel"><details${Object.keys(S.items).length < 5 ? ' open' : ''}><summary>Garder ton classement</summary><div class="explain" style="margin-top:12px">
     ${inApp ? '<p><b>Tu es dans le navigateur d\'une appli</b> (Gmail, Messenger, Instagram…). Ouvre plutôt ce lien dans Safari ou Chrome : ce qui est fait ici risque d\'être perdu.</p>' : ''}
     <p><b>Tout est enregistré dans ce navigateur, sur cet appareil,</b> à chaque action : tu peux fermer et revenir des jours après. Pas de compte, rien n'est envoyé.</p>
@@ -1401,7 +1548,7 @@ function manual(id, dir){
 
 /* ================= Démarrage ================= */
 const loaded = localLoad(); if (loaded) { S = loaded.s; D = loaded.d; }
-renderCats(); setMode(discMode); refit(); render(); connect(); initAmis();
+renderCats(); setMode(discMode); refit(); render(); connect(); initAmis(); initCloud();
 </script>
 
 </html>
