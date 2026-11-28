@@ -1589,6 +1589,53 @@ function renderWatch(){ const el = $('#watch-panel'); if (!el) return; const L =
 /* Rappel : on a commencé sans compte -> une connexion suffit pour tout garder en ligne */
 function loginNudge(){ return `<div class="result" style="grid-template-columns:1fr auto"><span class="small"><b>Ne perds pas ton classement.</b> Il n'existe que sur cet appareil : crée ton compte (adresse mail + code, 30 secondes) pour le garder en ligne et le retrouver partout.</span><button class="btn primary sm" data-login="1">Me connecter</button></div>`; }
 
+/* ================= Partager son top 10 en image ================= */
+const imgCache = new Map();
+const loadImg = src => { if (!imgCache.has(src)) imgCache.set(src, new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; })); return imgCache.get(src); };
+async function drawPoster(x, c, it, X, Y, W, H){
+  x.save(); const r = 14; x.beginPath(); x.roundRect(X, Y, W, H, r); x.clip();
+  try { if (!c || it.nm) throw 0; const img = await loadImg('q/b' + Math.floor(c.i / 16) + '.jpg'), sl = c.i % 16; x.drawImage(img, (sl % 8) * 210, Math.floor(sl / 8) * 300, 210, 300, X, Y, W, H); }
+  catch(e) { const g = x.createLinearGradient(X, Y, X + W, Y + H); g.addColorStop(0, 'hsl(' + hue(it.t) + ' 50% 32%)'); g.addColorStop(1, 'hsl(' + (hue(it.t) + 48) + ' 55% 14%)'); x.fillStyle = g; x.fillRect(X, Y, W, H);
+    x.fillStyle = '#fff'; x.font = '800 ' + Math.round(W / 8) + 'px "Bricolage Grotesque", sans-serif'; wrapText(x, it.t, X + 12, Y + H - 14, W - 24, Math.round(W / 7.5)); }
+  x.restore(); }
+function wrapText(x, t, X, Y, W, lh){ const words = String(t).split(' '), lines = []; let cur = '';
+  for (const w of words) { const s = cur ? cur + ' ' + w : w; if (x.measureText(s).width > W && cur) { lines.push(cur); cur = w; } else cur = s; } if (cur) lines.push(cur);
+  lines.slice(-4).reverse().forEach((l, i) => x.fillText(l, X, Y - i * lh)); }
+function fitText(x, t, W, size, weight = 700, fam = 'Inter'){ let s = size; do { x.font = weight + ' ' + s + 'px "' + fam + '", sans-serif'; s -= 1; } while (x.measureText(t).width > W && s > 10); return t; }
+async function shareTop(L, btn){
+  const o = ordOf(L).slice(0, 10); if (o.length < 3) return; btn.disabled = true; btn.textContent = 'Création…';
+  try { await document.fonts.ready;
+    const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350; const x = cv.getContext('2d');
+    x.fillStyle = '#08090D'; x.fillRect(0, 0, 1080, 1350);
+    const first = S.items[o[0]], c0 = catOf(first);
+    if (c0 && !first.nm) { try { const img = await loadImg('q/b' + Math.floor(c0.i / 16) + '.jpg'), sl = c0.i % 16; x.save(); x.filter = 'blur(60px) saturate(1.4)'; x.globalAlpha = .55; x.drawImage(img, (sl % 8) * 210, Math.floor(sl / 8) * 300, 210, 300, -200, -300, 1480, 1300); x.restore(); } catch(e) {} }
+    const gr = x.createLinearGradient(0, 0, 0, 1350); gr.addColorStop(0, 'rgba(8,9,13,.25)'); gr.addColorStop(.55, 'rgba(8,9,13,.85)'); gr.addColorStop(1, '#08090D'); x.fillStyle = gr; x.fillRect(0, 0, 1080, 1350);
+    const who = (typeof myPseudo !== 'undefined' && myPseudo) || (S.me && S.me.n) || '';
+    x.fillStyle = '#E8B04B'; x.font = '700 30px Inter, sans-serif'; x.fillText((who ? who.toUpperCase() + ' · ' : '') + 'PALMARÈS ' + LISTS[L].n.toUpperCase(), 64, 92);
+    x.fillStyle = '#F3F1EC'; x.font = '800 84px "Bricolage Grotesque", sans-serif'; x.fillText('Mon top ' + o.length, 64, 178);
+    // 1 à 3 en grand, 4 à 10 en petit
+    const big = o.slice(0, 3), small = o.slice(3);
+    const BW = 300, BH = 428, bx = [64, 390, 716];
+    for (let k = 0; k < big.length; k++) { const it = S.items[big[k]], X = bx[k], Y = 232;
+      await drawPoster(x, catOf(it), it, X, Y, BW, BH);
+      x.fillStyle = '#E8B04B'; x.font = '800 64px "Bricolage Grotesque", sans-serif'; x.fillText(String(k + 1), X, Y + BH + 70);
+      x.fillStyle = '#F3F1EC'; fitText(x, it.t, BW - 64, 30, 700); x.fillText(it.t, X + 56, Y + BH + 46);
+      x.fillStyle = '#9094A5'; x.font = '600 26px Inter, sans-serif'; x.fillText(fmtNote(noteOf(it.id)) + ' / 10', X + 56, Y + BH + 82); }
+    const SW = 120, SH = 171, gap = (1080 - 128 - SW * 7) / 6;
+    for (let k = 0; k < small.length; k++) { const it = S.items[small[k]], X = 64 + k * (SW + gap), Y = 830;
+      await drawPoster(x, catOf(it), it, X, Y, SW, SH);
+      x.fillStyle = '#E8B04B'; x.font = '800 34px "Bricolage Grotesque", sans-serif'; x.fillText(String(k + 4), X, Y + SH + 44);
+      x.fillStyle = '#F3F1EC'; x.font = '600 19px Inter, sans-serif'; const lines = []; let cur = '';
+      for (const w of it.t.split(' ')) { const s = cur ? cur + ' ' + w : w; if (x.measureText(s).width > SW && cur) { lines.push(cur); cur = w; } else cur = s; } if (cur) lines.push(cur);
+      lines.slice(0, 3).forEach((l, i) => x.fillText(l, X, Y + SH + 72 + i * 23)); }
+    x.fillStyle = '#9094A5'; x.font = '500 24px Inter, sans-serif'; x.fillText('Classé duel après duel · ' + (shareBase() || SITE).replace(/^https?:\/\//, '').replace(/\/$/, ''), 64, 1300);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png')); const name = 'mon-top-10-' + (L === 'a' ? 'animes' : 'series') + '.png';
+    const file = new File([blob], name, {type: 'image/png'});
+    if (navigator.canShare && navigator.canShare({files: [file]}) && /Android|iPhone|iPad/.test(navigator.userAgent)) { try { await navigator.share({files: [file], title: 'Mon top 10'}); } catch(e) {} }
+    else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Image enregistrée'); }
+  } catch(e) { toast('Image impossible à créer'); }
+  btn.disabled = false; btn.textContent = 'Partager mon top 10'; }
+
 /* ================= Mise en page : deux colonnes sur ordinateur ================= */
 function twoCol(el, isSide){ const kids = [...el.children]; if (kids.length < 2) return;
   const cols = document.createElement('div'), mc = document.createElement('div'), sc = document.createElement('aside');
@@ -1626,7 +1673,7 @@ function renderRank(){
   if (qn) h += `<div class="result" style="grid-template-columns:1fr auto"><span><b>${qn}</b> en attente de classement</span><button class="btn primary sm" id="go-duel">Classer</button></div>`;
   if (!o.length) { el.innerHTML = h + `<div class="empty"><b>Rien de classé dans ${LISTS[L].n.toLowerCase()} pour l'instant</b><span>${L === 'a' ? 'Les animés japonais du catalogue arrivent ici automatiquement. Pour une autre série, ouvre sa fiche et choisis « Animé ».' : 'Chaque série placée par les duels apparaît ici, avec sa place et sa note.'}</span></div>` + tools(); bindRank(); return; }
   const nU = o.filter(id => widthOf(id) > 0).length;
-  h += `<div class="row"><button class="btn" id="ref" ${o.length < 2 ? 'disabled' : ''}>Affiner</button><span class="kbd">${nU ? `${nU} place${nU > 1 ? 's' : ''} sur ${o.length} pas encore prouvée${nU > 1 ? 's' : ''}` : 'Toutes les places sont prouvées par tes duels'}</span></div>`;
+  h += `<div class="row"><button class="btn" id="ref" ${o.length < 2 ? 'disabled' : ''}>Affiner</button><button class="btn" id="top10" ${o.length < 3 ? 'disabled' : ''}>Partager mon top 10</button><span class="kbd">${nU ? `${nU} place${nU > 1 ? 's' : ''} sur ${o.length} pas encore prouvée${nU > 1 ? 's' : ''}` : 'Toutes les places sont prouvées par tes duels'}</span></div>`;
   if (o.length >= 3 && !rankFilter) h += `<div class="podium">${backdrop(S.items[o[0]])}${[1,0,2].map(r => { const it = S.items[o[r]]; return `<button data-open="${it.id}" class="p${r+1}"><span class="pr">${fr(r+1)}</span>${art(it, 'big')}<span class="pt">${esc(it.t)}</span></button>`; }).join('')}</div>`;
   if (o.length > 12) h += `<input type="search" id="rf" placeholder="Filtrer le classement" value="${esc(rankFilter)}">`;
   const f = norm(rankFilter); const vis = o.map((id, i) => [id, i]).filter(([id]) => !f || norm(S.items[id].t).includes(f));
@@ -1721,6 +1768,7 @@ function bindRank(){
   el.querySelectorAll('[data-mr]').forEach(b => b.onclick = () => { movRef = b.dataset.mr; try { localStorage.setItem('palmares:movref', movRef); } catch(e) {} renderRank(); });
   const gd = $('#go-duel'); if (gd) gd.onclick = () => go('duel');
   const rf = $('#ref'); if (rf) rf.onclick = () => startRefine(curList);
+  const t10 = $('#top10'); if (t10) t10.onclick = () => shareTop(curList, t10);
   const fl = $('#rf'); if (fl) fl.oninput = () => { rankFilter = fl.value; const pos = fl.selectionStart; renderRank(); const n = $('#rf'); n.focus(); n.setSelectionRange(pos, pos); };
   el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openSheet(b.dataset.open));
   el.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => { pushUndo(); const id = b.dataset.drop; S.dropped = S.dropped.filter(x => x !== id); S.queue.splice(S.pending ? 1 : 0, 0, id); save(); go('duel'); });
